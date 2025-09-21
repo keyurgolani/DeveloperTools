@@ -1,0 +1,72 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+docs/
+*.md
+
+# Development files
+.env
+.env.local
+.env.example
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+*_test.go
+testdata/
+tests/
+coverage.out
+coverage.html
+
+# Build artifacts
+server
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.log
+
+# Node.js MCP Bridge
+mcp-bridge/
+
+# Docker and Deployments
+Dockerfile*
+deployments/
+.dockerignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+Jenkinsfile
+
+# Kubernetes
+k8s/
+kubernetes/
+*.yaml
+*.yml
+!api/openapi.yml
+!go.sum
+
+# Build scripts
+build/
+
+# Misc
+.kiro/

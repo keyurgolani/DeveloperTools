@@ -1,0 +1,24 @@
+{
+  "name": "dev-utilities-mcp-bridge",
+  "version": "1.0.0",
+  "description": "MCP bridge for Developer Utilities HTTP server",
+  "main": "mcp-bridge.js",
+  "bin": {
+    "dev-utilities-mcp": "./mcp-bridge.js"
+  },
+  "scripts": {
+    "start": "node mcp-bridge.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "axios": "^1.6.0"
+  },
+  "keywords": [
+    "mcp",
+    "developer-utilities",
+    "bridge"
+  ],
+  "author": "",
+  "license": "Apache-2.0"
+}

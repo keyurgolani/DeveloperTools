@@ -1,0 +1,2007 @@
+openapi: 3.0.3
+info:
+  title: Developer Utilities MCP Server
+  description: |
+    A comprehensive, high-performance utility server that consolidates essential development tools into a single service. 
+    This server combines cryptography, data manipulation, text processing, identifier generation, time utilities, 
+    and network tools to provide AI agents and developers with a one-stop solution for common development tasks.
+    
+    The server is designed to be secure, stateless, and highly performant, following enterprise-grade standards 
+    while remaining accessible for open-source development.
+  version: 1.0.0
+  contact:
+    name: Developer Utilities MCP Server
+    url: https://github.com/example/dev-utilities
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.example.com
+    description: Production server
+
+paths:
+  # Health Check Endpoints
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Basic health check
+      description: Returns the basic health status of the service
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2023-12-01T10:00:00Z"
+                  service:
+                    type: string
+                    example: "dev-utilities"
+
+  /health/live:
+    get:
+      tags:
+        - Health
+      summary: Liveness probe
+      description: Kubernetes liveness probe endpoint
+      operationId: getLiveness
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "alive"
+
+  /health/ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness probe
+      description: Kubernetes readiness probe endpoint
+      operationId: getReadiness
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ready"
+
+  /metrics:
+    get:
+      tags:
+        - Observability
+      summary: Prometheus metrics
+      description: Prometheus-compatible metrics endpoint
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Metrics in Prometheus format
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  # HELP http_requests_total Total number of HTTP requests
+                  # TYPE http_requests_total counter
+                  http_requests_total{method="GET",path="/health",status_code="200"} 42
+
+  /api/v1/status:
+    get:
+      tags:
+        - System
+      summary: Service status
+      description: Returns detailed service status information
+      operationId: getStatus
+      responses:
+        '200':
+          description: Service status information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service:
+                    type: string
+                    example: "dev-utilities"
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  status:
+                    type: string
+                    example: "running"
+
+  # Cryptography Endpoints
+  /api/v1/crypto/hash:
+    post:
+      tags:
+        - Cryptography
+      summary: Calculate hash
+      description: Calculate hash using various algorithms (MD5, SHA1, SHA256, SHA512)
+      operationId: calculateHash
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HashRequest'
+            examples:
+              sha256:
+                summary: SHA256 hash example
+                value:
+                  content: "hello world"
+                  algorithm: "sha256"
+              md5:
+                summary: MD5 hash example
+                value:
+                  content: "test data"
+                  algorithm: "md5"
+      responses:
+        '200':
+          description: Hash calculated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/HashResponse'
+              examples:
+                sha256:
+                  summary: SHA256 hash result
+                  value:
+                    success: true
+                    data:
+                      hash: "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+                      algorithm: "sha256"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/crypto/hmac:
+    post:
+      tags:
+        - Cryptography
+      summary: Generate HMAC
+      description: Generate Hash-based Message Authentication Code using SHA256 or SHA512
+      operationId: generateHMAC
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HMACRequest'
+            examples:
+              sha256:
+                summary: HMAC-SHA256 example
+                value:
+                  content: "what do ya want for nothing?"
+                  key: "Jefe"
+                  algorithm: "sha256"
+      responses:
+        '200':
+          description: HMAC generated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/HMACResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/crypto/password/hash:
+    post:
+      tags:
+        - Cryptography
+      summary: Hash password
+      description: Hash password using Argon2id with secure defaults
+      operationId: hashPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordHashRequest'
+            examples:
+              basic:
+                summary: Basic password hashing
+                value:
+                  password: "mySecurePassword123"
+      responses:
+        '200':
+          description: Password hashed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PasswordHashResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/crypto/password/verify:
+    post:
+      tags:
+        - Cryptography
+      summary: Verify password
+      description: Verify password against Argon2id hash with constant-time comparison
+      operationId: verifyPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordVerifyRequest'
+            examples:
+              valid:
+                summary: Valid password verification
+                value:
+                  password: "mySecurePassword123"
+                  hash: "$argon2id$v=19$m=65536,t=3,p=4$..."
+      responses:
+        '200':
+          description: Password verification completed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PasswordVerifyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/crypto/cert/decode:
+    post:
+      tags:
+        - Cryptography
+      summary: Decode X.509 certificate
+      description: Decode PEM-encoded X.509 certificate and extract information
+      operationId: decodeCertificate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CertificateDecodeRequest'
+            examples:
+              basic:
+                summary: Certificate decoding
+                value:
+                  certificate: "-----BEGIN CERTIFICATE-----\nMIID...\n-----END CERTIFICATE-----"
+      responses:
+        '200':
+          description: Certificate decoded successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/CertificateDecodeResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # Text Processing Endpoints
+  /api/v1/text/case:
+    post:
+      tags:
+        - Text Processing
+      summary: Convert text case
+      description: Convert text between different case formats (UPPERCASE, lowercase, camelCase, etc.)
+      operationId: convertCase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaseConvertRequest'
+            examples:
+              camelCase:
+                summary: Convert to camelCase
+                value:
+                  content: "hello world example"
+                  caseType: "camelCase"
+              uppercase:
+                summary: Convert to UPPERCASE
+                value:
+                  content: "hello world"
+                  caseType: "UPPERCASE"
+      responses:
+        '200':
+          description: Case conversion completed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/CaseConvertResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/text/info:
+    post:
+      tags:
+        - Text Processing
+      summary: Analyze text
+      description: Get detailed text analysis including character count, word count, line count, etc.
+      operationId: analyzeText
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TextAnalyzeRequest'
+            examples:
+              basic:
+                summary: Basic text analysis
+                value:
+                  content: "Hello world!\nThis is a test."
+      responses:
+        '200':
+          description: Text analysis completed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/TextInfo'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/text/regex:
+    post:
+      tags:
+        - Text Processing
+      summary: Test regular expression
+      description: Test regular expression pattern against text and return matches
+      operationId: testRegex
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegexRequest'
+            examples:
+              email_pattern:
+                summary: Email pattern matching
+                value:
+                  content: "Contact us at support@example.com or sales@test.org"
+                  pattern: "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
+                  flags: "g"
+      responses:
+        '200':
+          description: Regex test completed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RegexResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/text/sort:
+    post:
+      tags:
+        - Text Processing
+      summary: Sort text lines
+      description: Sort text lines alphabetically or numerically in ascending or descending order
+      operationId: sortText
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TextSortRequest'
+            examples:
+              alphabetical:
+                summary: Alphabetical sorting
+                value:
+                  content: "zebra\napple\nbanana\ncherry"
+                  order: "asc"
+                  sortType: "alpha"
+      responses:
+        '200':
+          description: Text sorting completed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/TextSortResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/data/json/format:
+    post:
+      tags:
+        - Text Processing
+      summary: Format JSON
+      description: Format or minify JSON with configurable indentation
+      operationId: formatJSON
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JSONFormatRequest'
+            examples:
+              format:
+                summary: Format JSON with indentation
+                value:
+                  content: '{"name":"John","age":30,"city":"New York"}'
+                  action: "format"
+                  indent: 2
+              minify:
+                summary: Minify JSON
+                value:
+                  content: |
+                    {
+                      "name": "John",
+                      "age": 30,
+                      "city": "New York"
+                    }
+                  action: "minify"
+      responses:
+        '200':
+          description: JSON formatting completed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/JSONFormatResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  # Data Transformation Endpoints
+  /api/v1/transform/base64:
+    post:
+      tags:
+        - Data Transformation
+      summary: Base64 encode/decode
+      description: Encode or decode data using Base64 (standard or URL-safe)
+      operationId: transformBase64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Base64Request'
+            examples:
+              encode:
+                summary: Base64 encode
+                value:
+                  content: "hello world"
+                  action: "encode"
+                  urlSafe: false
+              decode:
+                summary: Base64 decode
+                value:
+                  content: "aGVsbG8gd29ybGQ="
+                  action: "decode"
+                  urlSafe: false
+      responses:
+        '200':
+          description: Base64 operation completed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Base64Response'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/transform/url:
+    post:
+      tags:
+        - Data Transformation
+      summary: URL encode/decode
+      description: Encode or decode data using URL percent-encoding
+      operationId: transformURL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/URLEncodeRequest'
+            examples:
+              encode:
+                summary: URL encode
+                value:
+                  content: "hello world & special chars"
+                  action: "encode"
+              decode:
+                summary: URL decode
+                value:
+                  content: "hello%20world%20%26%20special%20chars"
+                  action: "decode"
+      responses:
+        '200':
+          description: URL operation completed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/URLEncodeResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/transform/jwt/decode:
+    post:
+      tags:
+        - Data Transformation
+      summary: Decode JWT token
+      description: Decode JWT token and display header and payload (without signature verification)
+      operationId: decodeJWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JWTDecodeRequest'
+            examples:
+              basic:
+                summary: JWT decode
+                value:
+                  token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+      responses:
+        '200':
+          description: JWT decoded successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/JWTDecodeResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/transform/compress:
+    post:
+      tags:
+        - Data Transformation
+      summary: Compress/decompress data
+      description: Compress or decompress data using Gzip or Zlib with Base64 input/output
+      operationId: compressData
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompressionRequest'
+            examples:
+              compress:
+                summary: Compress with Gzip
+                value:
+                  content: "This is some text that will be compressed"
+                  action: "compress"
+                  algorithm: "gzip"
+      responses:
+        '200':
+          description: Compression operation completed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/CompressionResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # Identifier Generation Endpoints
+  /api/v1/id/uuid:
+    post:
+      tags:
+        - Identifiers
+      summary: Generate UUIDs
+      description: Generate UUID version 1 or 4 with configurable count
+      operationId: generateUUID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UUIDRequest'
+            examples:
+              uuid_v4:
+                summary: Generate UUID v4
+                value:
+                  version: 4
+                  count: 5
+              uuid_v1:
+                summary: Generate UUID v1
+                value:
+                  version: 1
+                  count: 1
+      responses:
+        '200':
+          description: UUIDs generated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UUIDResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/id/nanoid:
+    post:
+      tags:
+        - Identifiers
+      summary: Generate Nano IDs
+      description: Generate URL-friendly Nano IDs with configurable size and count
+      operationId: generateNanoID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NanoIDRequest'
+            examples:
+              default:
+                summary: Default Nano ID
+                value:
+                  size: 21
+                  count: 5
+              custom:
+                summary: Custom size Nano ID
+                value:
+                  size: 10
+                  count: 3
+      responses:
+        '200':
+          description: Nano IDs generated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/NanoIDResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # Time Utilities Endpoints
+  /api/v1/time/convert:
+    post:
+      tags:
+        - Time Utilities
+      summary: Convert time formats
+      description: Convert between Unix timestamps, ISO 8601, and human-readable formats
+      operationId: convertTime
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeConvertRequest'
+            examples:
+              unix_to_iso:
+                summary: Unix timestamp to ISO 8601
+                value:
+                  input: "1640995200"
+                  inputFormat: "unix"
+                  outputFormat: "iso8601"
+              iso_to_human:
+                summary: ISO 8601 to human readable
+                value:
+                  input: "2022-01-01T00:00:00Z"
+                  inputFormat: "iso8601"
+                  outputFormat: "human"
+      responses:
+        '200':
+          description: Time conversion completed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/TimeConvertResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/time/now:
+    get:
+      tags:
+        - Time Utilities
+      summary: Get current time
+      description: Get current time in multiple formats (Unix seconds, milliseconds, ISO 8601, human-readable)
+      operationId: getCurrentTime
+      responses:
+        '200':
+          description: Current time retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/TimeResponse'
+
+  # Network Utilities Endpoints
+  /api/v1/web/url:
+    post:
+      tags:
+        - Network Utilities
+      summary: Parse or build URLs
+      description: Parse URLs into components or build URLs from components
+      operationId: processURL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/URLRequest'
+            examples:
+              parse:
+                summary: Parse URL
+                value:
+                  action: "parse"
+                  url: "https://example.com:8080/path?param=value#fragment"
+              build:
+                summary: Build URL
+                value:
+                  action: "build"
+                  parts:
+                    scheme: "https"
+                    host: "example.com"
+                    path: "/api/v1"
+                    query:
+                      param1: "value1"
+                      param2: "value2"
+      responses:
+        '200':
+          description: URL operation completed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        oneOf:
+                          - $ref: '#/components/schemas/URLParts'
+                          - $ref: '#/components/schemas/URLBuildResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/network/headers:
+    post:
+      tags:
+        - Network Utilities
+      summary: Get HTTP headers
+      description: Make HTTP GET request and return response headers (with SSRF protection)
+      operationId: getHTTPHeaders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HeaderRequest'
+            examples:
+              basic:
+                summary: Get headers from URL
+                value:
+                  url: "https://httpbin.org/headers"
+      responses:
+        '200':
+          description: HTTP headers retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/HeaderResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/network/dns:
+    post:
+      tags:
+        - Network Utilities
+      summary: DNS lookup
+      description: Perform DNS lookup for various record types (A, AAAA, MX, TXT, NS, CNAME)
+      operationId: dnsLookup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DNSRequest'
+            examples:
+              a_record:
+                summary: A record lookup
+                value:
+                  domain: "example.com"
+                  recordType: "A"
+              mx_record:
+                summary: MX record lookup
+                value:
+                  domain: "example.com"
+                  recordType: "MX"
+      responses:
+        '200':
+          description: DNS lookup completed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DNSResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/network/ip:
+    post:
+      tags:
+        - Network Utilities
+      summary: Analyze IP address
+      description: Validate and classify IP addresses (private, public, loopback, version)
+      operationId: analyzeIP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IPAnalyzeRequest'
+            examples:
+              ipv4_public:
+                summary: Public IPv4 address
+                value:
+                  ip: "8.8.8.8"
+              ipv4_private:
+                summary: Private IPv4 address
+                value:
+                  ip: "192.168.1.1"
+              ipv6:
+                summary: IPv6 address
+                value:
+                  ip: "2001:4860:4860::8888"
+      responses:
+        '200':
+          description: IP analysis completed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/IPInfo'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+components:
+  schemas:
+    # Common Response Schemas
+    SuccessResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          description: Response data (varies by endpoint)
+
+    ErrorResponse:
+      type: object
+      required:
+        - success
+        - error
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          $ref: '#/components/schemas/APIError'
+
+    APIError:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Error code for programmatic handling
+          enum:
+            - VALIDATION_ERROR
+            - AUTHENTICATION_ERROR
+            - AUTHORIZATION_ERROR
+            - RATE_LIMIT_ERROR
+            - INTERNAL_ERROR
+            - SERVICE_UNAVAILABLE
+            - NOT_FOUND
+            - METHOD_NOT_ALLOWED
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Invalid request format"
+        details:
+          type: string
+          description: Additional error details
+          example: "Field 'algorithm' is required"
+
+    # Cryptography Schemas
+    HashRequest:
+      type: object
+      required:
+        - content
+        - algorithm
+      properties:
+        content:
+          type: string
+          description: Content to hash
+          example: "hello world"
+        algorithm:
+          type: string
+          description: Hash algorithm to use
+          enum: [md5, sha1, sha256, sha512]
+          example: "sha256"
+
+    HashResponse:
+      type: object
+      required:
+        - hash
+        - algorithm
+      properties:
+        hash:
+          type: string
+          description: Calculated hash in hexadecimal format
+          example: "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+        algorithm:
+          type: string
+          description: Algorithm used for hashing
+          example: "sha256"
+
+    HMACRequest:
+      type: object
+      required:
+        - content
+        - key
+        - algorithm
+      properties:
+        content:
+          type: string
+          description: Content to authenticate
+          example: "what do ya want for nothing?"
+        key:
+          type: string
+          description: Secret key for HMAC
+          example: "Jefe"
+        algorithm:
+          type: string
+          description: HMAC algorithm to use
+          enum: [sha256, sha512]
+          example: "sha256"
+
+    HMACResponse:
+      type: object
+      required:
+        - hmac
+        - algorithm
+      properties:
+        hmac:
+          type: string
+          description: Calculated HMAC in hexadecimal format
+          example: "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"
+        algorithm:
+          type: string
+          description: Algorithm used for HMAC
+          example: "sha256"
+
+    PasswordHashRequest:
+      type: object
+      required:
+        - password
+      properties:
+        password:
+          type: string
+          description: Password to hash
+          minLength: 1
+          example: "mySecurePassword123"
+
+    PasswordHashResponse:
+      type: object
+      required:
+        - hash
+      properties:
+        hash:
+          type: string
+          description: Argon2id hash of the password
+          example: "$argon2id$v=19$m=65536,t=3,p=4$..."
+
+    PasswordVerifyRequest:
+      type: object
+      required:
+        - password
+        - hash
+      properties:
+        password:
+          type: string
+          description: Password to verify
+          example: "mySecurePassword123"
+        hash:
+          type: string
+          description: Argon2id hash to verify against
+          example: "$argon2id$v=19$m=65536,t=3,p=4$..."
+
+    PasswordVerifyResponse:
+      type: object
+      required:
+        - valid
+      properties:
+        valid:
+          type: boolean
+          description: Whether the password matches the hash
+          example: true
+
+    CertificateDecodeRequest:
+      type: object
+      required:
+        - certificate
+      properties:
+        certificate:
+          type: string
+          description: PEM-encoded X.509 certificate
+          example: "-----BEGIN CERTIFICATE-----\nMIID...\n-----END CERTIFICATE-----"
+
+    CertificateDecodeResponse:
+      type: object
+      required:
+        - certificate
+      properties:
+        certificate:
+          $ref: '#/components/schemas/CertificateInfo'
+
+    CertificateInfo:
+      type: object
+      required:
+        - subject
+        - issuer
+        - notBefore
+        - notAfter
+        - serialNumber
+        - version
+        - keyUsage
+        - dnsNames
+      properties:
+        subject:
+          type: string
+          description: Certificate subject
+          example: "CN=example.com,O=Example Corp,C=US"
+        issuer:
+          type: string
+          description: Certificate issuer
+          example: "CN=Example CA,O=Example Corp,C=US"
+        notBefore:
+          type: string
+          format: date-time
+          description: Certificate validity start date
+          example: "2023-01-01T00:00:00Z"
+        notAfter:
+          type: string
+          format: date-time
+          description: Certificate validity end date
+          example: "2024-01-01T00:00:00Z"
+        serialNumber:
+          type: string
+          description: Certificate serial number
+          example: "1234567890"
+        version:
+          type: integer
+          description: Certificate version
+          example: 3
+        keyUsage:
+          type: array
+          items:
+            type: string
+          description: Certificate key usage
+          example: ["Digital Signature", "Key Encipherment"]
+        dnsNames:
+          type: array
+          items:
+            type: string
+          description: Subject Alternative Names (DNS)
+          example: ["example.com", "www.example.com"]
+
+    # Text Processing Schemas
+    CaseConvertRequest:
+      type: object
+      required:
+        - content
+        - caseType
+      properties:
+        content:
+          type: string
+          description: Text content to convert
+          example: "hello world example"
+        caseType:
+          type: string
+          description: Target case format
+          enum: 
+            - UPPERCASE
+            - lowercase
+            - "Title Case"
+            - "Sentence case"
+            - camelCase
+            - PascalCase
+            - snake_case
+            - kebab-case
+          example: "camelCase"
+
+    CaseConvertResponse:
+      type: object
+      required:
+        - result
+      properties:
+        result:
+          type: string
+          description: Converted text
+          example: "helloWorldExample"
+
+    TextAnalyzeRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          description: Text content to analyze
+          example: "Hello world!\nThis is a test."
+
+    TextInfo:
+      type: object
+      required:
+        - characterCount
+        - wordCount
+        - lineCount
+        - sentenceCount
+        - byteSize
+      properties:
+        characterCount:
+          type: integer
+          description: Number of characters (Unicode-aware)
+          example: 25
+        wordCount:
+          type: integer
+          description: Number of words
+          example: 5
+        lineCount:
+          type: integer
+          description: Number of lines
+          example: 2
+        sentenceCount:
+          type: integer
+          description: Number of sentences
+          example: 2
+        byteSize:
+          type: integer
+          description: Size in bytes
+          example: 25
+
+    RegexRequest:
+      type: object
+      required:
+        - content
+        - pattern
+      properties:
+        content:
+          type: string
+          description: Text content to test against
+          example: "Contact us at support@example.com or sales@test.org"
+        pattern:
+          type: string
+          description: Regular expression pattern
+          example: "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
+        flags:
+          type: string
+          description: Regex flags
+          example: "g"
+
+    RegexResponse:
+      type: object
+      required:
+        - matches
+        - pattern
+      properties:
+        matches:
+          type: array
+          items:
+            type: string
+          description: Array of matches found
+          example: ["support@example.com", "sales@test.org"]
+        pattern:
+          type: string
+          description: Pattern that was used
+          example: "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
+
+    TextSortRequest:
+      type: object
+      required:
+        - content
+        - order
+        - sortType
+      properties:
+        content:
+          type: string
+          description: Text content with lines to sort
+          example: "zebra\napple\nbanana\ncherry"
+        order:
+          type: string
+          description: Sort order
+          enum: [asc, desc]
+          example: "asc"
+        sortType:
+          type: string
+          description: Sort type
+          enum: [alpha, numeric]
+          example: "alpha"
+
+    TextSortResponse:
+      type: object
+      required:
+        - result
+      properties:
+        result:
+          type: string
+          description: Sorted text
+          example: "apple\nbanana\ncherry\nzebra"
+
+    JSONFormatRequest:
+      type: object
+      required:
+        - content
+        - action
+      properties:
+        content:
+          type: string
+          description: JSON content to format
+          example: '{"name":"John","age":30,"city":"New York"}'
+        action:
+          type: string
+          description: Format action
+          enum: [format, minify]
+          example: "format"
+        indent:
+          type: integer
+          description: Indentation spaces (for format action)
+          minimum: 0
+          maximum: 8
+          default: 2
+          example: 2
+
+    JSONFormatResponse:
+      type: object
+      required:
+        - result
+      properties:
+        result:
+          type: string
+          description: Formatted JSON
+          example: |
+            {
+              "name": "John",
+              "age": 30,
+              "city": "New York"
+            }
+
+    # Data Transformation Schemas
+    Base64Request:
+      type: object
+      required:
+        - content
+        - action
+      properties:
+        content:
+          type: string
+          description: Content to encode/decode
+          example: "hello world"
+        action:
+          type: string
+          description: Operation to perform
+          enum: [encode, decode]
+          example: "encode"
+        urlSafe:
+          type: boolean
+          description: Use URL-safe Base64 variant
+          default: false
+          example: false
+
+    Base64Response:
+      type: object
+      required:
+        - result
+      properties:
+        result:
+          type: string
+          description: Encoded/decoded result
+          example: "aGVsbG8gd29ybGQ="
+
+    URLEncodeRequest:
+      type: object
+      required:
+        - content
+        - action
+      properties:
+        content:
+          type: string
+          description: Content to encode/decode
+          example: "hello world & special chars"
+        action:
+          type: string
+          description: Operation to perform
+          enum: [encode, decode]
+          example: "encode"
+
+    URLEncodeResponse:
+      type: object
+      required:
+        - result
+      properties:
+        result:
+          type: string
+          description: Encoded/decoded result
+          example: "hello%20world%20%26%20special%20chars"
+
+    JWTDecodeRequest:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          description: JWT token to decode
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+
+    JWTDecodeResponse:
+      type: object
+      required:
+        - header
+        - payload
+        - signatureVerified
+      properties:
+        header:
+          type: object
+          description: JWT header
+          example:
+            alg: "HS256"
+            typ: "JWT"
+        payload:
+          type: object
+          description: JWT payload
+          example:
+            sub: "1234567890"
+            name: "John Doe"
+            iat: 1516239022
+        signatureVerified:
+          type: boolean
+          description: Signature verification status (always false)
+          example: false
+
+    CompressionRequest:
+      type: object
+      required:
+        - content
+        - action
+        - algorithm
+      properties:
+        content:
+          type: string
+          description: Content to compress/decompress (Base64 for decompress)
+          example: "This is some text that will be compressed"
+        action:
+          type: string
+          description: Operation to perform
+          enum: [compress, decompress]
+          example: "compress"
+        algorithm:
+          type: string
+          description: Compression algorithm
+          enum: [gzip, zlib]
+          example: "gzip"
+
+    CompressionResponse:
+      type: object
+      required:
+        - result
+      properties:
+        result:
+          type: string
+          description: Compressed/decompressed result (Base64 for compress)
+          example: "H4sIAAAAAAAA/..."
+
+    # Identifier Generation Schemas
+    UUIDRequest:
+      type: object
+      required:
+        - version
+      properties:
+        version:
+          type: integer
+          description: UUID version
+          enum: [1, 4]
+          example: 4
+        count:
+          type: integer
+          description: Number of UUIDs to generate
+          minimum: 1
+          maximum: 1000
+          default: 1
+          example: 5
+
+    UUIDResponse:
+      type: object
+      required:
+        - uuids
+      properties:
+        uuids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Generated UUIDs
+          example: 
+            - "123e4567-e89b-12d3-a456-426614174000"
+            - "987fcdeb-51a2-43d1-9f12-345678901234"
+
+    NanoIDRequest:
+      type: object
+      properties:
+        size:
+          type: integer
+          description: Size of Nano ID
+          minimum: 1
+          maximum: 50
+          default: 21
+          example: 21
+        count:
+          type: integer
+          description: Number of Nano IDs to generate
+          minimum: 1
+          maximum: 1000
+          default: 1
+          example: 5
+
+    NanoIDResponse:
+      type: object
+      required:
+        - ids
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+          description: Generated Nano IDs
+          example: 
+            - "V1StGXR8_Z5jdHi6B-myT"
+            - "3PIlw-fEXFE1-9Aj-3NNj"
+
+    # Time Utilities Schemas
+    TimeConvertRequest:
+      type: object
+      required:
+        - input
+        - inputFormat
+        - outputFormat
+      properties:
+        input:
+          type: string
+          description: Input time value
+          example: "1640995200"
+        inputFormat:
+          type: string
+          description: Input format
+          enum: [unix, unix_ms, iso8601, rfc3339, human]
+          example: "unix"
+        outputFormat:
+          type: string
+          description: Output format
+          enum: [unix, unix_ms, iso8601, rfc3339, human]
+          example: "iso8601"
+
+    TimeConvertResponse:
+      type: object
+      required:
+        - result
+      properties:
+        result:
+          type: string
+          description: Converted time
+          example: "2022-01-01T00:00:00Z"
+
+    TimeResponse:
+      type: object
+      required:
+        - unixSeconds
+        - unixMilliseconds
+        - iso8601
+        - rfc3339
+        - humanReadable
+      properties:
+        unixSeconds:
+          type: integer
+          format: int64
+          description: Unix timestamp in seconds
+          example: 1640995200
+        unixMilliseconds:
+          type: integer
+          format: int64
+          description: Unix timestamp in milliseconds
+          example: 1640995200000
+        iso8601:
+          type: string
+          format: date-time
+          description: ISO 8601 format
+          example: "2022-01-01T00:00:00Z"
+        rfc3339:
+          type: string
+          format: date-time
+          description: RFC 3339 format
+          example: "2022-01-01T00:00:00Z"
+        humanReadable:
+          type: string
+          description: Human-readable format
+          example: "January 1, 2022 at 12:00:00 AM UTC"
+
+    # Network Utilities Schemas
+    URLRequest:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          description: Operation to perform
+          enum: [parse, build]
+          example: "parse"
+        url:
+          type: string
+          description: URL to parse (required for parse action)
+          example: "https://example.com:8080/path?param=value#fragment"
+        parts:
+          $ref: '#/components/schemas/URLParts'
+
+    URLParts:
+      type: object
+      required:
+        - scheme
+        - host
+        - path
+        - query
+        - fragment
+      properties:
+        scheme:
+          type: string
+          description: URL scheme
+          example: "https"
+        host:
+          type: string
+          description: Hostname and port
+          example: "example.com:8080"
+        path:
+          type: string
+          description: URL path
+          example: "/path"
+        query:
+          type: object
+          additionalProperties:
+            type: string
+          description: Query parameters
+          example:
+            param: "value"
+        fragment:
+          type: string
+          description: URL fragment
+          example: "fragment"
+
+    URLBuildResponse:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          description: Built URL
+          example: "https://example.com:8080/path?param=value#fragment"
+
+    HeaderRequest:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          description: URL to get headers from
+          example: "https://httpbin.org/headers"
+
+    HeaderResponse:
+      type: object
+      required:
+        - url
+        - statusCode
+        - headers
+      properties:
+        url:
+          type: string
+          description: Requested URL
+          example: "https://httpbin.org/headers"
+        statusCode:
+          type: integer
+          description: HTTP status code
+          example: 200
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Response headers
+          example:
+            Content-Type: "application/json"
+            Server: "nginx/1.18.0"
+
+    DNSRequest:
+      type: object
+      required:
+        - domain
+        - recordType
+      properties:
+        domain:
+          type: string
+          description: Domain name to lookup
+          example: "example.com"
+        recordType:
+          type: string
+          description: DNS record type
+          enum: [A, AAAA, MX, TXT, NS, CNAME]
+          example: "A"
+
+    DNSResponse:
+      type: object
+      required:
+        - domain
+        - recordType
+        - records
+      properties:
+        domain:
+          type: string
+          description: Domain that was queried
+          example: "example.com"
+        recordType:
+          type: string
+          description: Record type that was queried
+          example: "A"
+        records:
+          type: array
+          items:
+            type: string
+          description: DNS records found
+          example: ["93.184.216.34"]
+        ttl:
+          type: integer
+          description: Time to live in seconds
+          example: 3600
+
+    IPAnalyzeRequest:
+      type: object
+      required:
+        - ip
+      properties:
+        ip:
+          type: string
+          description: IP address to analyze
+          example: "8.8.8.8"
+
+    IPInfo:
+      type: object
+      required:
+        - ip
+        - version
+        - isPrivate
+        - isPublic
+        - isLoopback
+      properties:
+        ip:
+          type: string
+          description: IP address that was analyzed
+          example: "8.8.8.8"
+        version:
+          type: integer
+          description: IP version (4 or 6)
+          example: 4
+        isPrivate:
+          type: boolean
+          description: Whether IP is in private range
+          example: false
+        isPublic:
+          type: boolean
+          description: Whether IP is public
+          example: true
+        isLoopback:
+          type: boolean
+          description: Whether IP is loopback
+          example: false
+
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            missing_field:
+              summary: Missing required field
+              value:
+                success: false
+                error:
+                  code: "VALIDATION_ERROR"
+                  message: "Invalid request format"
+                  details: "Field 'algorithm' is required"
+            invalid_value:
+              summary: Invalid field value
+              value:
+                success: false
+                error:
+                  code: "VALIDATION_ERROR"
+                  message: "Invalid request format"
+                  details: "Field 'algorithm' must be one of: md5, sha1, sha256, sha512"
+
+    AuthenticationError:
+      description: Authentication error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            missing_auth:
+              summary: Missing authentication
+              value:
+                success: false
+                error:
+                  code: "AUTHENTICATION_ERROR"
+                  message: "Authentication required"
+                  details: "API key or JWT token required"
+
+    AuthorizationError:
+      description: Authorization error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            insufficient_permissions:
+              summary: Insufficient permissions
+              value:
+                success: false
+                error:
+                  code: "AUTHORIZATION_ERROR"
+                  message: "Insufficient permissions"
+                  details: "Access to this resource is not allowed"
+
+    RateLimitError:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            rate_limited:
+              summary: Rate limit exceeded
+              value:
+                success: false
+                error:
+                  code: "RATE_LIMIT_ERROR"
+                  message: "Rate limit exceeded"
+                  details: "Too many requests, please try again later"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            generic:
+              summary: Generic internal error
+              value:
+                success: false
+                error:
+                  code: "INTERNAL_ERROR"
+                  message: "Internal server error"
+                  details: "An unexpected error occurred"
+
+    ServiceUnavailableError:
+      description: Service unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            dependency_failure:
+              summary: External dependency failure
+              value:
+                success: false
+                error:
+                  code: "SERVICE_UNAVAILABLE"
+                  message: "Service temporarily unavailable"
+                  details: "External service dependency is currently unavailable"
+
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            endpoint_not_found:
+              summary: Endpoint not found
+              value:
+                success: false
+                error:
+                  code: "NOT_FOUND"
+                  message: "Endpoint not found"
+                  details: "The requested endpoint does not exist"
+
+  headers:
+    X-Request-ID:
+      description: Unique request identifier for tracing
+      schema:
+        type: string
+        format: uuid
+        example: "123e4567-e89b-12d3-a456-426614174000"
+
+tags:
+  - name: Health
+    description: Health check and monitoring endpoints
+  - name: Observability
+    description: Metrics and monitoring endpoints
+  - name: System
+    description: System status and information endpoints
+  - name: Cryptography
+    description: Cryptographic operations and security tools
+  - name: Text Processing
+    description: Text manipulation and analysis tools
+  - name: Data Transformation
+    description: Encoding, decoding, and data transformation utilities
+  - name: Identifiers
+    description: Unique identifier generation utilities
+  - name: Time Utilities
+    description: Time conversion and formatting tools
+  - name: Network Utilities
+    description: Network operations and web utilities
+
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authentication

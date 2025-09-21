@@ -1,0 +1,141 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+*.prof
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Build artifacts
+bin/
+dist/
+build/
+target/
+*.tar.gz
+*.zip
+
+# IDE files
+.vscode/
+.idea/
+.kiro/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Coverage reports
+coverage.html
+coverage.out
+coverage.txt
+*.cover
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.test
+
+# Log files
+*.log
+logs/
+log/
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+*.tmp
+*.temp
+*.pid
+*.seed
+*.pid.lock
+
+# Debug files
+debug
+debug.test
+__debug_bin*
+
+# Air live reload
+.air.toml
+tmp/
+
+# Docker
+.dockerignore.bak
+
+# Node.js (if any frontend components)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python (if any Python scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Certificates and keys (security)
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+!examples/sample-certificate.pem
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache directories
+.cache/
+*.cache
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# MCP specific
+mcp-server
+mcp-client
+*.mcp
+
+# Backup files
+*.bak
+*.backup
+*~
