@@ -5,14 +5,16 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+
+	"github.com/keyurgolani/DeveloperTools/internal/constants"
 )
 
-// Logger wraps slog.Logger with additional functionality for the application
+// Logger wraps slog.Logger with additional functionality for the application.
 type Logger struct {
 	*slog.Logger
 }
 
-// New creates a new logger instance with the specified level
+// New creates a new logger instance with the specified level.
 func New(level string) *Logger {
 	var logLevel slog.Level
 
@@ -47,17 +49,17 @@ func New(level string) *Logger {
 	return &Logger{Logger: logger}
 }
 
-// WithRequestID creates a logger with request ID context
+// WithRequestID creates a logger with request ID context.
 func (l *Logger) WithRequestID(requestID string) *Logger {
 	return &Logger{
-		Logger: l.Logger.With("request_id", requestID),
+		Logger: l.With("request_id", requestID),
 	}
 }
 
 // WithModule creates a logger with module context
 func (l *Logger) WithModule(module string) *Logger {
 	return &Logger{
-		Logger: l.Logger.With("module", module),
+		Logger: l.With("module", module),
 	}
 }
 
@@ -86,16 +88,16 @@ func (l *Logger) LogRequest(method, path string, status int, duration int64, arg
 		"status", status,
 		"duration_ms", duration,
 	}
-	
-	allArgs := append(baseArgs, args...)
-	
+
+	baseArgs = append(baseArgs, args...)
+
 	switch {
-	case status >= 500:
-		l.Error("HTTP request", allArgs...)
-	case status >= 400:
-		l.Warn("HTTP request", allArgs...)
+	case status >= constants.LogLevelErrorThreshold:
+		l.Error("HTTP request", baseArgs...)
+	case status >= constants.LogLevelWarningThreshold:
+		l.Warn("HTTP request", baseArgs...)
 	default:
-		l.Info("HTTP request", allArgs...)
+		l.Info("HTTP request", baseArgs...)
 	}
 }
 
@@ -106,14 +108,14 @@ func isSensitiveKey(key string) bool {
 		"jwt", "bearer", "credential", "private", "hash", "hmac",
 		"certificate", "cert", "signature", "salt",
 	}
-	
+
 	keyLower := strings.ToLower(key)
 	for _, sensitive := range sensitiveKeys {
 		if strings.Contains(keyLower, sensitive) {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -122,14 +124,14 @@ func SanitizeValue(key string, value interface{}) interface{} {
 	if isSensitiveKey(key) {
 		return "[REDACTED]"
 	}
-	
+
 	// If it's a string, check for patterns that might be sensitive
 	if str, ok := value.(string); ok {
 		if looksLikeSensitiveData(str) {
 			return "[REDACTED]"
 		}
 	}
-	
+
 	return value
 }
 
@@ -139,29 +141,29 @@ func looksLikeSensitiveData(value string) bool {
 	if len(value) == 0 {
 		return false
 	}
-	
+
 	// JWT tokens (3 base64 parts separated by dots)
 	if strings.Count(value, ".") == 2 && len(value) > 100 {
 		return true
 	}
-	
+
 	// API keys (long alphanumeric strings)
 	if len(value) > 32 && isAlphanumeric(value) {
 		return true
 	}
-	
+
 	// Base64 encoded data (might be sensitive)
 	if len(value) > 50 && isBase64Like(value) {
 		return true
 	}
-	
+
 	return false
 }
 
 // isAlphanumeric checks if string contains only alphanumeric characters
 func isAlphanumeric(s string) bool {
 	for _, r := range s {
-		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')) {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') {
 			return false
 		}
 	}
@@ -173,25 +175,25 @@ func isBase64Like(s string) bool {
 	if len(s) == 0 {
 		return false
 	}
-	
+
 	// Check for mixed content (spaces or other non-base64 chars mixed with base64)
 	hasSpace := false
 	validChars := 0
-	
+
 	for _, r := range s {
 		if r == ' ' || r == '\t' || r == '\n' {
 			hasSpace = true
-		} else if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || 
-		   (r >= '0' && r <= '9') || r == '+' || r == '/' || r == '=' || r == '-' || r == '_' {
+		} else if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') ||
+			(r >= '0' && r <= '9') || r == '+' || r == '/' || r == '=' || r == '-' || r == '_' {
 			validChars++
 		}
 	}
-	
+
 	// If it has spaces mixed with base64 chars, it's likely mixed content
 	if hasSpace && validChars > 0 {
 		return false
 	}
-	
-	// If more than 90% of characters are valid base64 chars (including URL-safe), consider it base64-like
-	return float64(validChars)/float64(len(s)) > 0.9
+
+	// If more than the minimum ratio of characters are valid base64 chars (including URL-safe), consider it base64-like
+	return float64(validChars)/float64(len(s)) > constants.MinValidCharRatio
 }

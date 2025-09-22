@@ -3,19 +3,19 @@ package text
 import (
 	"net/http"
 
-	"dev-utilities/internal/metrics"
-	"dev-utilities/pkg/apierror"
+	"github.com/keyurgolani/DeveloperTools/internal/metrics"
+	"github.com/keyurgolani/DeveloperTools/pkg/apierror"
 
 	"github.com/gin-gonic/gin"
 )
 
-// Handler handles HTTP requests for text operations
+// Handler handles HTTP requests for text operations.
 type Handler struct {
 	service TextService
 	metrics *metrics.Metrics
 }
 
-// NewHandler creates a new text handler
+// NewHandler creates a new text handler.
 func NewHandler(service TextService, metrics *metrics.Metrics) *Handler {
 	return &Handler{
 		service: service,
@@ -23,7 +23,7 @@ func NewHandler(service TextService, metrics *metrics.Metrics) *Handler {
 	}
 }
 
-// RegisterRoutes registers text routes with the router
+// RegisterRoutes registers text routes with the router.
 func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 	text := router.Group("/text")
 	{
@@ -32,14 +32,14 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 		text.POST("/regex", h.TestRegex)
 		text.POST("/sort", h.SortText)
 	}
-	
+
 	data := router.Group("/data")
 	{
 		data.POST("/json/format", h.FormatJSON)
 	}
 }
 
-// ConvertCase handles case conversion requests
+// ConvertCase handles case conversion requests.
 func (h *Handler) ConvertCase(c *gin.Context) {
 	var req CaseConvertRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -78,7 +78,7 @@ func (h *Handler) ConvertCase(c *gin.Context) {
 	})
 }
 
-// AnalyzeText handles text analysis requests
+// AnalyzeText handles text analysis requests.
 func (h *Handler) AnalyzeText(c *gin.Context) {
 	var req TextAnalyzeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -112,7 +112,7 @@ func (h *Handler) AnalyzeText(c *gin.Context) {
 	})
 }
 
-// TestRegex handles regex testing requests
+// TestRegex handles regex testing requests.
 func (h *Handler) TestRegex(c *gin.Context) {
 	var req RegexTestRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -146,50 +146,35 @@ func (h *Handler) TestRegex(c *gin.Context) {
 	})
 }
 
-// FormatJSON handles JSON formatting requests
+// FormatJSON handles JSON formatting requests.
 func (h *Handler) FormatJSON(c *gin.Context) {
 	var req JSONFormatRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		if h.metrics != nil {
-			h.metrics.RecordTextOperation("json_format", "validation_error")
-		}
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": apierror.ValidationError("Invalid request", err.Error()),
-		})
-		return
-	}
-
-	result, err := h.service.FormatJSON(req.Content, req.Action, req.Indent)
-	if err != nil {
-		if h.metrics != nil {
-			h.metrics.RecordTextOperation("json_format", "error")
-		}
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": apierror.ValidationError("JSON formatting failed", err.Error()),
-		})
-		return
-	}
-
-	if h.metrics != nil {
-		h.metrics.RecordTextOperation("json_format", "success")
-	}
-
-	response := JSONFormatResponse{
-		Result: result,
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    response,
+	h.handleTextOperation(c, &req, "json_format", func() (string, error) {
+		return h.service.FormatJSON(req.Content, req.Action, req.Indent)
+	}, "JSON formatting failed", func(result string) interface{} {
+		return JSONFormatResponse{Result: result}
 	})
 }
 
-// SortText handles text sorting requests
+// SortText handles text sorting requests.
 func (h *Handler) SortText(c *gin.Context) {
 	var req TextSortRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	h.handleTextOperation(c, &req, "sort", func() (string, error) {
+		return h.service.SortText(req.Content, req.Order, req.SortType)
+	}, "Text sorting failed", func(result string) interface{} {
+		return TextSortResponse{Result: result}
+	})
+}
+
+// Helper function to handle common text operation pattern with response wrapping.
+func (h *Handler) handleTextOperation(
+	c *gin.Context, req interface{}, operation string,
+	serviceCall func() (string, error), errorMessage string,
+	wrapResponse func(string) interface{},
+) {
+	if err := c.ShouldBindJSON(req); err != nil {
 		if h.metrics != nil {
-			h.metrics.RecordTextOperation("sort", "validation_error")
+			h.metrics.RecordTextOperation(operation, "validation_error")
 		}
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": apierror.ValidationError("Invalid request", err.Error()),
@@ -197,24 +182,22 @@ func (h *Handler) SortText(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.SortText(req.Content, req.Order, req.SortType)
+	result, err := serviceCall()
 	if err != nil {
 		if h.metrics != nil {
-			h.metrics.RecordTextOperation("sort", "error")
+			h.metrics.RecordTextOperation(operation, "error")
 		}
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": apierror.ValidationError("Text sorting failed", err.Error()),
+			"error": apierror.ValidationError(errorMessage, err.Error()),
 		})
 		return
 	}
 
 	if h.metrics != nil {
-		h.metrics.RecordTextOperation("sort", "success")
+		h.metrics.RecordTextOperation(operation, "success")
 	}
 
-	response := TextSortResponse{
-		Result: result,
-	}
+	response := wrapResponse(result)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,

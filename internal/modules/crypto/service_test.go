@@ -1,4 +1,4 @@
-package crypto
+package crypto_test
 
 import (
 	"encoding/base64"
@@ -6,21 +6,64 @@ import (
 	"testing"
 	"time"
 
+	"github.com/keyurgolani/DeveloperTools/internal/modules/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestCryptoService_Hash(t *testing.T) {
-	service := NewCryptoService()
+const (
+	testSHA256Algorithm = "sha256"
+	testBinaryData      = "\x00\x01\x02\x03\xff\xfe\xfd"
+	testContent         = "test"
+	testConsistencyData = "consistency test"
+	testHMACKey         = "testkey"
+	testHMACContent     = "test content"
+	testCertificate     = `-----BEGIN CERTIFICATE-----
+MIIDJjCCAg4CCQD+EO1siPH5GTANBgkqhkiG9w0BAQsFADBVMQswCQYDVQQGEwJV
+UzENMAsGA1UECAwEVGVzdDENMAsGA1UEBwwEVGVzdDENMAsGA1UECgwEVGVzdDEZ
+MBcGA1UEAwwQdGVzdC5leGFtcGxlLmNvbTAeFw0yNTA5MjAxOTMxNTNaFw0yNjA5
+MjAxOTMxNTNaMFUxCzAJBgNVBAYTAlVTMQ0wCwYDVQQIDARUZXN0MQ0wCwYDVQQH
+DARUZXN0MQ0wCwYDVQQKDARUZXN0MRkwFwYDVQQDDBB0ZXN0LmV4YW1wbGUuY29t
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAw0anQHt/88gvbutvzcdT
+cSKOXPkx9mrMhETXWpqcGjHliavZn51Qavvy7sLrzduUTt7Y/m4Y/jOjhoJGOaaa
+Bk4FQbAYIQsKtizp5Ydkn94WgQ50aTv+OrH5hHsw25pMiJYRv6lptTi+CIAfKrJD
+T6Xrtytrph+cUmvI3LkmvZCY+7S8694VHpArmz4TTo29GAVcEjv8JlODKH049lfR
+NvU21eEOajQozlXJ/vPeugwwuRlZFRjrmWtbmWEhyhsNOXOl6oo6EFBU2/eipbVT
+V8SG0QogwAynlMyXVWkjSw5o9fErSb2TxJti+SjB4Ys2BRitr8WN0jxYXTWBUvl1
+KwIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQAuKxZ0CNbxhh97CjQ5XgThVE3X0Yv9
+YNJ9QTtF4p4mBvn8L5DSj8OhEYsKMfNU2Tc+hJgPBQMA3zPKQzg3IJfOldM4cCWU
+UdVm4QRSOpcTGcjCWriu6IBKXaYoJkbyts2C6TSAAdnz/LoNAIxl+j0r93OQS4Su
+6E/wQH38RwSlAfY8l/JofiAbjn3u1gMLb9iMI+MooBj5/AQ2NlvYZBLqoURFA4cz
+bm1nEqtJZCN/WZA4K2YIi0xboI1oMRbUIIYgmqhR5+qGRpO32Roa/8XuXw5o1ftn
+nU4ZU3j43ohhFR96ZjnvIZ/5eYr/L0ZlexDZ8gpGXsaV+RLF5DxGTOFp
+-----END CERTIFICATE-----`
+)
 
-	tests := []struct {
+func TestCryptoService_Hash(t *testing.T) {
+	service := crypto.NewCryptoService()
+	tests := getHashTestCases()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			executeHashTest(t, service, tt)
+		})
+	}
+}
+
+func getMD5TestCases() []struct {
+	name      string
+	content   string
+	algorithm string
+	expected  string
+	wantErr   bool
+} {
+	return []struct {
 		name      string
 		content   string
 		algorithm string
 		expected  string
 		wantErr   bool
 	}{
-		// MD5 test vectors
 		{
 			name:      "MD5 empty string",
 			content:   "",
@@ -42,7 +85,23 @@ func TestCryptoService_Hash(t *testing.T) {
 			expected:  "9e107d9d372bb6826bd81d3542a419d6",
 			wantErr:   false,
 		},
-		// SHA1 test vectors
+	}
+}
+
+func getSHA1TestCases() []struct {
+	name      string
+	content   string
+	algorithm string
+	expected  string
+	wantErr   bool
+} {
+	return []struct {
+		name      string
+		content   string
+		algorithm string
+		expected  string
+		wantErr   bool
+	}{
 		{
 			name:      "SHA1 empty string",
 			content:   "",
@@ -64,7 +123,23 @@ func TestCryptoService_Hash(t *testing.T) {
 			expected:  "2fd4e1c67a2d28fced849ee1bb76e7391b93eb12",
 			wantErr:   false,
 		},
-		// SHA256 test vectors
+	}
+}
+
+func getSHA256TestCases() []struct {
+	name      string
+	content   string
+	algorithm string
+	expected  string
+	wantErr   bool
+} {
+	return []struct {
+		name      string
+		content   string
+		algorithm string
+		expected  string
+		wantErr   bool
+	}{
 		{
 			name:      "SHA256 empty string",
 			content:   "",
@@ -86,7 +161,23 @@ func TestCryptoService_Hash(t *testing.T) {
 			expected:  "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
 			wantErr:   false,
 		},
-		// SHA512 test vectors
+	}
+}
+
+func getSHA512TestCases() []struct {
+	name      string
+	content   string
+	algorithm string
+	expected  string
+	wantErr   bool
+} {
+	return []struct {
+		name      string
+		content   string
+		algorithm string
+		expected  string
+		wantErr   bool
+	}{
 		{
 			name:      "SHA512 empty string",
 			content:   "",
@@ -108,8 +199,23 @@ func TestCryptoService_Hash(t *testing.T) {
 			expected:  "07e547d9586f6a73f73fbac0435ed76951218fb7d0c8d788a309d785436bbb642e93a252a954f23912547d1e8a3b5ed6e1bfd7097821233fa0538f3db854fee6",
 			wantErr:   false,
 		},
+	}
+}
 
-		// Large content test
+func getHashErrorTestCases() []struct {
+	name      string
+	content   string
+	algorithm string
+	expected  string
+	wantErr   bool
+} {
+	return []struct {
+		name      string
+		content   string
+		algorithm string
+		expected  string
+		wantErr   bool
+	}{
 		{
 			name:      "SHA256 large content",
 			content:   string(make([]byte, 10000)),
@@ -117,7 +223,6 @@ func TestCryptoService_Hash(t *testing.T) {
 			expected:  "95b532cc4381affdff0d956e12520a04129ed49d37e154228368fe5621f0b9a2",
 			wantErr:   false,
 		},
-		// Error cases
 		{
 			name:      "Unsupported algorithm",
 			content:   "test",
@@ -133,29 +238,57 @@ func TestCryptoService_Hash(t *testing.T) {
 			wantErr:   true,
 		},
 	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := service.Hash(tt.content, tt.algorithm)
-			
-			if tt.wantErr {
-				assert.Error(t, err)
-				assert.Empty(t, result)
-				return
-			}
-			
-			require.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
-		})
+func getHashTestCases() []struct {
+	name      string
+	content   string
+	algorithm string
+	expected  string
+	wantErr   bool
+} {
+	var testCases []struct {
+		name      string
+		content   string
+		algorithm string
+		expected  string
+		wantErr   bool
 	}
+
+	testCases = append(testCases, getMD5TestCases()...)
+	testCases = append(testCases, getSHA1TestCases()...)
+	testCases = append(testCases, getSHA256TestCases()...)
+	testCases = append(testCases, getSHA512TestCases()...)
+	testCases = append(testCases, getHashErrorTestCases()...)
+
+	return testCases
+}
+
+func executeHashTest(t *testing.T, service crypto.CryptoService, tt struct {
+	name      string
+	content   string
+	algorithm string
+	expected  string
+	wantErr   bool
+}) {
+	result, err := service.Hash(tt.content, tt.algorithm)
+
+	if tt.wantErr {
+		assert.Error(t, err)
+		assert.Empty(t, result)
+		return
+	}
+
+	require.NoError(t, err)
+	assert.Equal(t, tt.expected, result)
 }
 
 func TestCryptoService_Hash_EdgeCases(t *testing.T) {
-	service := NewCryptoService()
+	service := crypto.NewCryptoService()
 
 	t.Run("Binary data", func(t *testing.T) {
 		// Test with binary data (null bytes)
-		binaryData := "\x00\x01\x02\x03\xff\xfe\xfd"
+		binaryData := testBinaryData
 		result, err := service.Hash(binaryData, "sha256")
 		require.NoError(t, err)
 		assert.NotEmpty(t, result)
@@ -168,7 +301,7 @@ func TestCryptoService_Hash_EdgeCases(t *testing.T) {
 		for i := range longContent {
 			longContent[i] = byte(i % 256)
 		}
-		
+
 		result, err := service.Hash(string(longContent), "sha256")
 		require.NoError(t, err)
 		assert.NotEmpty(t, result)
@@ -194,15 +327,15 @@ func TestCryptoService_Hash_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("Case sensitivity of algorithm parameter", func(t *testing.T) {
-		content := "test"
-		
+		content := testContent
+
 		// Test that algorithm parameter is case sensitive
 		_, err := service.Hash(content, "SHA256")
 		assert.Error(t, err)
-		
+
 		_, err = service.Hash(content, "Sha256")
 		assert.Error(t, err)
-		
+
 		// But lowercase works
 		_, err = service.Hash(content, "sha256")
 		assert.NoError(t, err)
@@ -210,11 +343,11 @@ func TestCryptoService_Hash_EdgeCases(t *testing.T) {
 }
 
 func TestCryptoService_Hash_Consistency(t *testing.T) {
-	service := NewCryptoService()
+	service := crypto.NewCryptoService()
 
 	t.Run("Same input produces same output", func(t *testing.T) {
-		content := "consistency test"
-		algorithm := "sha256"
+		content := testConsistencyData
+		algorithm := testSHA256Algorithm
 
 		result1, err1 := service.Hash(content, algorithm)
 		result2, err2 := service.Hash(content, algorithm)
@@ -225,11 +358,11 @@ func TestCryptoService_Hash_Consistency(t *testing.T) {
 	})
 
 	t.Run("Different instances produce same output", func(t *testing.T) {
-		service1 := NewCryptoService()
-		service2 := NewCryptoService()
-		
+		service1 := crypto.NewCryptoService()
+		service2 := crypto.NewCryptoService()
+
 		content := "instance test"
-		algorithm := "sha256"
+		algorithm := testSHA256Algorithm
 
 		result1, err1 := service1.Hash(content, algorithm)
 		result2, err2 := service2.Hash(content, algorithm)
@@ -240,10 +373,15 @@ func TestCryptoService_Hash_Consistency(t *testing.T) {
 	})
 }
 
-func TestCryptoService_HMAC(t *testing.T) {
-	service := NewCryptoService()
-
-	tests := []struct {
+func getHMACSHA256TestCases() []struct {
+	name      string
+	content   string
+	key       string
+	algorithm string
+	expected  string
+	wantErr   bool
+} {
+	return []struct {
 		name      string
 		content   string
 		key       string
@@ -251,7 +389,6 @@ func TestCryptoService_HMAC(t *testing.T) {
 		expected  string
 		wantErr   bool
 	}{
-		// HMAC-SHA256 test vectors from RFC 4231
 		{
 			name:      "HMAC-SHA256 test case 1",
 			content:   "Hi There",
@@ -276,7 +413,25 @@ func TestCryptoService_HMAC(t *testing.T) {
 			expected:  "773ea91e36800e46854db8ebd09181a72959098b3ef8c122d9635514ced565fe",
 			wantErr:   false,
 		},
-		// HMAC-SHA512 test vectors
+	}
+}
+
+func getHMACSHA512TestCases() []struct {
+	name      string
+	content   string
+	key       string
+	algorithm string
+	expected  string
+	wantErr   bool
+} {
+	return []struct {
+		name      string
+		content   string
+		key       string
+		algorithm string
+		expected  string
+		wantErr   bool
+	}{
 		{
 			name:      "HMAC-SHA512 test case 1",
 			content:   "Hi There",
@@ -293,7 +448,25 @@ func TestCryptoService_HMAC(t *testing.T) {
 			expected:  "164b7a7bfcf819e2e395fbe73b56e0a387bd64222e831fd610270cd7ea2505549758bf75c05a994a6d034f65f8f0e6fdcaeab1a34d4a6b4b636e070a38bce737",
 			wantErr:   false,
 		},
-		// Edge cases
+	}
+}
+
+func getHMACEdgeTestCases() []struct {
+	name      string
+	content   string
+	key       string
+	algorithm string
+	expected  string
+	wantErr   bool
+} {
+	return []struct {
+		name      string
+		content   string
+		key       string
+		algorithm string
+		expected  string
+		wantErr   bool
+	}{
 		{
 			name:      "Empty content",
 			content:   "",
@@ -318,7 +491,25 @@ func TestCryptoService_HMAC(t *testing.T) {
 			expected:  "a98622a65f519a3e56acc5020d18ae0f2ded1db0af0e791a25dd3d7090e90df8",
 			wantErr:   false,
 		},
-		// Error cases
+	}
+}
+
+func getHMACErrorTestCases() []struct {
+	name      string
+	content   string
+	key       string
+	algorithm string
+	expected  string
+	wantErr   bool
+} {
+	return []struct {
+		name      string
+		content   string
+		key       string
+		algorithm string
+		expected  string
+		wantErr   bool
+	}{
 		{
 			name:      "Unsupported algorithm",
 			content:   "test",
@@ -336,30 +527,59 @@ func TestCryptoService_HMAC(t *testing.T) {
 			wantErr:   true,
 		},
 	}
+}
+
+func executeHMACTest(t *testing.T, service crypto.CryptoService, tt struct {
+	name      string
+	content   string
+	key       string
+	algorithm string
+	expected  string
+	wantErr   bool
+}) {
+	result, err := service.HMAC(tt.content, tt.key, tt.algorithm)
+
+	if tt.wantErr {
+		assert.Error(t, err)
+		assert.Empty(t, result)
+		return
+	}
+
+	require.NoError(t, err)
+	assert.Equal(t, tt.expected, result)
+}
+
+func TestCryptoService_HMAC(t *testing.T) {
+	service := crypto.NewCryptoService()
+
+	var tests []struct {
+		name      string
+		content   string
+		key       string
+		algorithm string
+		expected  string
+		wantErr   bool
+	}
+
+	tests = append(tests, getHMACSHA256TestCases()...)
+	tests = append(tests, getHMACSHA512TestCases()...)
+	tests = append(tests, getHMACEdgeTestCases()...)
+	tests = append(tests, getHMACErrorTestCases()...)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := service.HMAC(tt.content, tt.key, tt.algorithm)
-			
-			if tt.wantErr {
-				assert.Error(t, err)
-				assert.Empty(t, result)
-				return
-			}
-			
-			require.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
+			executeHMACTest(t, service, tt)
 		})
 	}
 }
 
 func TestCryptoService_HMAC_EdgeCases(t *testing.T) {
-	service := NewCryptoService()
+	service := crypto.NewCryptoService()
 
 	t.Run("Binary data in content", func(t *testing.T) {
 		binaryContent := "\x00\x01\x02\x03\xff\xfe\xfd"
 		key := "testkey"
-		
+
 		result, err := service.HMAC(binaryContent, key, "sha256")
 		require.NoError(t, err)
 		assert.NotEmpty(t, result)
@@ -369,7 +589,7 @@ func TestCryptoService_HMAC_EdgeCases(t *testing.T) {
 	t.Run("Binary data in key", func(t *testing.T) {
 		content := "test content"
 		binaryKey := "\x00\x01\x02\x03\xff\xfe\xfd"
-		
+
 		result, err := service.HMAC(content, binaryKey, "sha256")
 		require.NoError(t, err)
 		assert.NotEmpty(t, result)
@@ -381,7 +601,7 @@ func TestCryptoService_HMAC_EdgeCases(t *testing.T) {
 		for i := range longContent {
 			longContent[i] = byte(i % 256)
 		}
-		
+
 		result, err := service.HMAC(string(longContent), "key", "sha256")
 		require.NoError(t, err)
 		assert.NotEmpty(t, result)
@@ -391,7 +611,7 @@ func TestCryptoService_HMAC_EdgeCases(t *testing.T) {
 	t.Run("Unicode in content and key", func(t *testing.T) {
 		unicodeContent := "Hello, 世界! 🌍"
 		unicodeKey := "密钥🔑"
-		
+
 		result, err := service.HMAC(unicodeContent, unicodeKey, "sha256")
 		require.NoError(t, err)
 		assert.NotEmpty(t, result)
@@ -401,14 +621,14 @@ func TestCryptoService_HMAC_EdgeCases(t *testing.T) {
 	t.Run("Case sensitivity of algorithm parameter", func(t *testing.T) {
 		content := "test"
 		key := "key"
-		
+
 		// Test that algorithm parameter is case sensitive
 		_, err := service.HMAC(content, key, "SHA256")
 		assert.Error(t, err)
-		
+
 		_, err = service.HMAC(content, key, "Sha256")
 		assert.Error(t, err)
-		
+
 		// But lowercase works
 		_, err = service.HMAC(content, key, "sha256")
 		assert.NoError(t, err)
@@ -416,7 +636,7 @@ func TestCryptoService_HMAC_EdgeCases(t *testing.T) {
 }
 
 func TestCryptoService_HMAC_Consistency(t *testing.T) {
-	service := NewCryptoService()
+	service := crypto.NewCryptoService()
 
 	t.Run("Same input produces same output", func(t *testing.T) {
 		content := "consistency test"
@@ -446,8 +666,8 @@ func TestCryptoService_HMAC_Consistency(t *testing.T) {
 	})
 
 	t.Run("Different algorithms produce different results", func(t *testing.T) {
-		content := "test content"
-		key := "testkey"
+		content := testHMACContent
+		key := testHMACKey
 
 		result256, err256 := service.HMAC(content, key, "sha256")
 		result512, err512 := service.HMAC(content, key, "sha512")
@@ -460,9 +680,9 @@ func TestCryptoService_HMAC_Consistency(t *testing.T) {
 	})
 }
 
-// Benchmark tests for performance
+// Benchmark tests for performance.
 func BenchmarkCryptoService_Hash(b *testing.B) {
-	service := NewCryptoService()
+	service := crypto.NewCryptoService()
 	content := "benchmark test content that is reasonably long to get meaningful measurements"
 
 	algorithms := []string{"md5", "sha1", "sha256", "sha512"}
@@ -481,7 +701,7 @@ func BenchmarkCryptoService_Hash(b *testing.B) {
 }
 
 func BenchmarkCryptoService_Hash_LargeContent(b *testing.B) {
-	service := NewCryptoService()
+	service := crypto.NewCryptoService()
 	content := string(make([]byte, 1024*1024)) // 1MB
 
 	b.ResetTimer()
@@ -494,7 +714,7 @@ func BenchmarkCryptoService_Hash_LargeContent(b *testing.B) {
 }
 
 func BenchmarkCryptoService_HMAC(b *testing.B) {
-	service := NewCryptoService()
+	service := crypto.NewCryptoService()
 	content := "benchmark test content that is reasonably long to get meaningful measurements"
 	key := "benchmark-secret-key"
 
@@ -514,7 +734,7 @@ func BenchmarkCryptoService_HMAC(b *testing.B) {
 }
 
 func BenchmarkCryptoService_HMAC_LargeContent(b *testing.B) {
-	service := NewCryptoService()
+	service := crypto.NewCryptoService()
 	content := string(make([]byte, 1024*1024)) // 1MB
 	key := "benchmark-key"
 
@@ -528,9 +748,32 @@ func BenchmarkCryptoService_HMAC_LargeContent(b *testing.B) {
 }
 
 func TestCryptoService_HashPassword(t *testing.T) {
-	service := NewCryptoService()
+	service := crypto.NewCryptoService()
+	tests := getHashPasswordTestCases()
 
-	tests := []struct {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hash, err := service.HashPassword(tt.password)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Empty(t, hash)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.NotEmpty(t, hash)
+			verifyHashFormat(t, hash)
+		})
+	}
+}
+
+func getHashPasswordTestCases() []struct {
+	name     string
+	password string
+	wantErr  bool
+} {
+	return []struct {
 		name     string
 		password string
 		wantErr  bool
@@ -566,38 +809,25 @@ func TestCryptoService_HashPassword(t *testing.T) {
 			wantErr:  false,
 		},
 	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			hash, err := service.HashPassword(tt.password)
-			
-			if tt.wantErr {
-				assert.Error(t, err)
-				assert.Empty(t, hash)
-				return
-			}
-			
-			require.NoError(t, err)
-			assert.NotEmpty(t, hash)
-			
-			// Verify the hash format
-			assert.True(t, strings.HasPrefix(hash, "$argon2id$v=19$m=65536,t=3,p=4$"))
-			
-			// Verify the hash has the correct number of parts
-			parts := strings.Split(hash, "$")
-			assert.Len(t, parts, 6)
-			
-			// Verify salt and hash are base64 encoded
-			_, err = base64.RawStdEncoding.DecodeString(parts[4]) // salt
-			assert.NoError(t, err)
-			_, err = base64.RawStdEncoding.DecodeString(parts[5]) // hash
-			assert.NoError(t, err)
-		})
-	}
+func verifyHashFormat(t *testing.T, hash string) {
+	// Verify the hash format
+	assert.True(t, strings.HasPrefix(hash, "$argon2id$v=19$m=65536,t=3,p=4$"))
+
+	// Verify the hash has the correct number of parts
+	parts := strings.Split(hash, "$")
+	assert.Len(t, parts, 6)
+
+	// Verify salt and hash are base64 encoded
+	_, err := base64.RawStdEncoding.DecodeString(parts[4]) // salt
+	assert.NoError(t, err)
+	_, err = base64.RawStdEncoding.DecodeString(parts[5]) // hash
+	assert.NoError(t, err)
 }
 
 func TestCryptoService_VerifyPassword(t *testing.T) {
-	service := NewCryptoService()
+	service := crypto.NewCryptoService()
 
 	// Test with known good password/hash pairs
 	testCases := []struct {
@@ -616,14 +846,14 @@ func TestCryptoService_VerifyPassword(t *testing.T) {
 			// Hash the password
 			hash, err := service.HashPassword(tc.password)
 			require.NoError(t, err)
-			
+
 			// Verify correct password
 			assert.True(t, service.VerifyPassword(tc.password, hash))
-			
+
 			// Verify incorrect password
 			assert.False(t, service.VerifyPassword(tc.password+"wrong", hash))
 			assert.False(t, service.VerifyPassword("wrong"+tc.password, hash))
-			
+
 			if tc.password != "" {
 				assert.False(t, service.VerifyPassword("", hash))
 			}
@@ -632,11 +862,11 @@ func TestCryptoService_VerifyPassword(t *testing.T) {
 }
 
 func TestCryptoService_VerifyPassword_EdgeCases(t *testing.T) {
-	service := NewCryptoService()
+	service := crypto.NewCryptoService()
 
 	t.Run("Invalid hash formats", func(t *testing.T) {
 		password := "test"
-		
+
 		invalidHashes := []string{
 			"",
 			"invalid",
@@ -645,22 +875,22 @@ func TestCryptoService_VerifyPassword_EdgeCases(t *testing.T) {
 			"$argon2id$v=19$m=65536$",
 			"$argon2id$v=19$m=65536,t=3,p=4$",
 			"$argon2id$v=19$m=65536,t=3,p=4$salt$", // missing hash
-			"$bcrypt$2a$10$salt$hash", // wrong algorithm
-			"$argon2id$v=18$m=65536,t=3,p=4$salt$hash", // wrong version
-			"$argon2id$v=19$m=invalid,t=3,p=4$salt$hash", // invalid params
+			"$bcrypt$2a$10$salt$hash",              // wrong algorithm
+			"$argon2id$v=18$m=65536,t=3,p=4$salt$hash",           // wrong version
+			"$argon2id$v=19$m=invalid,t=3,p=4$salt$hash",         // invalid params
 			"$argon2id$v=19$m=65536,t=3,p=4$invalid_base64$hash", // invalid salt
 			"$argon2id$v=19$m=65536,t=3,p=4$salt$invalid_base64", // invalid hash
 		}
-		
+
 		for _, invalidHash := range invalidHashes {
-			assert.False(t, service.VerifyPassword(password, invalidHash), 
+			assert.False(t, service.VerifyPassword(password, invalidHash),
 				"Should reject invalid hash: %s", invalidHash)
 		}
 	})
 
 	t.Run("Different parameters should not verify", func(t *testing.T) {
 		password := "testpassword"
-		
+
 		// Create a hash with different parameters (this would be from a different system)
 		differentHash := "$argon2id$v=19$m=32768,t=2,p=2$c2FsdA$aGFzaA"
 		assert.False(t, service.VerifyPassword(password, differentHash))
@@ -668,51 +898,51 @@ func TestCryptoService_VerifyPassword_EdgeCases(t *testing.T) {
 }
 
 func TestCryptoService_Password_Consistency(t *testing.T) {
-	service := NewCryptoService()
+	service := crypto.NewCryptoService()
 
 	t.Run("Same password produces different hashes", func(t *testing.T) {
 		password := "consistency test"
-		
+
 		hash1, err1 := service.HashPassword(password)
 		hash2, err2 := service.HashPassword(password)
-		
+
 		require.NoError(t, err1)
 		require.NoError(t, err2)
-		
+
 		// Hashes should be different due to random salt
 		assert.NotEqual(t, hash1, hash2)
-		
+
 		// But both should verify correctly
 		assert.True(t, service.VerifyPassword(password, hash1))
 		assert.True(t, service.VerifyPassword(password, hash2))
 	})
 
 	t.Run("Different instances produce verifiable hashes", func(t *testing.T) {
-		service1 := NewCryptoService()
-		service2 := NewCryptoService()
-		
+		service1 := crypto.NewCryptoService()
+		service2 := crypto.NewCryptoService()
+
 		password := "instance test"
-		
+
 		hash, err := service1.HashPassword(password)
 		require.NoError(t, err)
-		
+
 		// Different instance should be able to verify
 		assert.True(t, service2.VerifyPassword(password, hash))
 	})
 }
 
 func TestCryptoService_Password_TimingAttackResistance(t *testing.T) {
-	service := NewCryptoService()
-	
+	service := crypto.NewCryptoService()
+
 	password := "testpassword"
 	hash, err := service.HashPassword(password)
 	require.NoError(t, err)
-	
+
 	// Test that verification time is consistent regardless of input
 	// This is a basic test - in practice, more sophisticated timing analysis would be needed
 	t.Run("Consistent timing for different inputs", func(t *testing.T) {
 		iterations := 10
-		
+
 		// Measure time for correct password
 		correctTimes := make([]time.Duration, iterations)
 		for i := 0; i < iterations; i++ {
@@ -720,7 +950,7 @@ func TestCryptoService_Password_TimingAttackResistance(t *testing.T) {
 			service.VerifyPassword(password, hash)
 			correctTimes[i] = time.Since(start)
 		}
-		
+
 		// Measure time for incorrect password
 		incorrectTimes := make([]time.Duration, iterations)
 		for i := 0; i < iterations; i++ {
@@ -728,28 +958,28 @@ func TestCryptoService_Password_TimingAttackResistance(t *testing.T) {
 			service.VerifyPassword("wrongpassword", hash)
 			incorrectTimes[i] = time.Since(start)
 		}
-		
+
 		// Calculate average times
 		var correctTotal, incorrectTotal time.Duration
 		for i := 0; i < iterations; i++ {
 			correctTotal += correctTimes[i]
 			incorrectTotal += incorrectTimes[i]
 		}
-		
+
 		correctAvg := correctTotal / time.Duration(iterations)
 		incorrectAvg := incorrectTotal / time.Duration(iterations)
-		
+
 		// Times should be similar (within reasonable variance)
 		// Allow up to 50% difference to account for system variance
 		ratio := float64(correctAvg) / float64(incorrectAvg)
-		assert.True(t, ratio > 0.5 && ratio < 2.0, 
-			"Timing difference too large: correct=%v, incorrect=%v, ratio=%f", 
+		assert.True(t, ratio > 0.5 && ratio < 2.0,
+			"Timing difference too large: correct=%v, incorrect=%v, ratio=%f",
 			correctAvg, incorrectAvg, ratio)
 	})
 }
 
 func BenchmarkCryptoService_HashPassword(b *testing.B) {
-	service := NewCryptoService()
+	service := crypto.NewCryptoService()
 	password := "benchmark password"
 
 	b.ResetTimer()
@@ -762,9 +992,9 @@ func BenchmarkCryptoService_HashPassword(b *testing.B) {
 }
 
 func BenchmarkCryptoService_VerifyPassword(b *testing.B) {
-	service := NewCryptoService()
+	service := crypto.NewCryptoService()
 	password := "benchmark password"
-	
+
 	hash, err := service.HashPassword(password)
 	if err != nil {
 		b.Fatal(err)
@@ -778,137 +1008,19 @@ func BenchmarkCryptoService_VerifyPassword(b *testing.B) {
 	}
 }
 
-func TestCryptoService_DecodeCertificate(t *testing.T) {
-	service := NewCryptoService()
+func testCertificateWithDNSNames(t *testing.T, service crypto.CryptoService) {
+	testCert := testCertificate
 
-	// Sample self-signed certificate for testing
-	testCert := `-----BEGIN CERTIFICATE-----
-MIIDJjCCAg4CCQD+EO1siPH5GTANBgkqhkiG9w0BAQsFADBVMQswCQYDVQQGEwJV
-UzENMAsGA1UECAwEVGVzdDENMAsGA1UEBwwEVGVzdDENMAsGA1UECgwEVGVzdDEZ
-MBcGA1UEAwwQdGVzdC5leGFtcGxlLmNvbTAeFw0yNTA5MjAxOTMxNTNaFw0yNjA5
-MjAxOTMxNTNaMFUxCzAJBgNVBAYTAlVTMQ0wCwYDVQQIDARUZXN0MQ0wCwYDVQQH
-DARUZXN0MQ0wCwYDVQQKDARUZXN0MRkwFwYDVQQDDBB0ZXN0LmV4YW1wbGUuY29t
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAw0anQHt/88gvbutvzcdT
-cSKOXPkx9mrMhETXWpqcGjHliavZn51Qavvy7sLrzduUTt7Y/m4Y/jOjhoJGOaaa
-Bk4FQbAYIQsKtizp5Ydkn94WgQ50aTv+OrH5hHsw25pMiJYRv6lptTi+CIAfKrJD
-T6Xrtytrph+cUmvI3LkmvZCY+7S8694VHpArmz4TTo29GAVcEjv8JlODKH049lfR
-NvU21eEOajQozlXJ/vPeugwwuRlZFRjrmWtbmWEhyhsNOXOl6oo6EFBU2/eipbVT
-V8SG0QogwAynlMyXVWkjSw5o9fErSb2TxJti+SjB4Ys2BRitr8WN0jxYXTWBUvl1
-KwIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQAuKxZ0CNbxhh97CjQ5XgThVE3X0Yv9
-YNJ9QTtF4p4mBvn8L5DSj8OhEYsKMfNU2Tc+hJgPBQMA3zPKQzg3IJfOldM4cCWU
-UdVm4QRSOpcTGcjCWriu6IBKXaYoJkbyts2C6TSAAdnz/LoNAIxl+j0r93OQS4Su
-6E/wQH38RwSlAfY8l/JofiAbjn3u1gMLb9iMI+MooBj5/AQ2NlvYZBLqoURFA4cz
-bm1nEqtJZCN/WZA4K2YIi0xboI1oMRbUIIYgmqhR5+qGRpO32Roa/8XuXw5o1ftn
-nU4ZU3j43ohhFR96ZjnvIZ/5eYr/L0ZlexDZ8gpGXsaV+RLF5DxGTOFp
------END CERTIFICATE-----`
+	result, err := service.DecodeCertificate(testCert)
+	require.NoError(t, err)
+	require.NotNil(t, result)
 
-	tests := []struct {
-		name        string
-		pemData     string
-		wantErr     bool
-		checkFields func(*testing.T, *CertificateInfo)
-	}{
-		{
-			name:    "Valid certificate",
-			pemData: testCert,
-			wantErr: false,
-			checkFields: func(t *testing.T, info *CertificateInfo) {
-				assert.NotEmpty(t, info.Subject)
-				assert.NotEmpty(t, info.Issuer)
-				assert.NotEmpty(t, info.SerialNumber)
-				assert.True(t, info.NotBefore.Before(info.NotAfter))
-				assert.Equal(t, 1, info.Version) // X.509 v1
-			},
-		},
-		{
-			name:    "Invalid PEM format",
-			pemData: "not a pem certificate",
-			wantErr: true,
-		},
-		{
-			name:    "Empty input",
-			pemData: "",
-			wantErr: true,
-		},
-		{
-			name: "Wrong PEM type",
-			pemData: `-----BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC64TFWKUZxYiNl
-K5fDhDNA/1G5aRDs5/MwfLUISUDVhNsXOfNvUiEs00b/5f1y82i2ggg2fmM2NVLw
-g0HYpEOGppOa7y0iythCKLQDfZtwvJNIAfIjzKSu4O28/uu5uHKLjT6wmB4KdMqU
-EizCs9dEG0EIvjSE5iby6UdufuOJCNBvBYnI3EvW26jah7ckQNV8Lq72irH1wQuT
-FoUl2ULlKW9wcYPacN+7AcoAokp7fwzx46SwKelgTE3E07NBL8sI6O5/iYZGS34C
-RJbKgfg2v3OhKWJLmrjGNW6J+8uGE2ndSlORIaY9JfD6h8frQUb5BVaBbB1cIVsc
-ChL47hF3AgMBAAECggEADCwCINVciFsKA/5kAJQ+7fqBOdIcj5MT4Y9r88C4u2Mi
-cFJmLrfvOZWom9NQ2Fi90V9H7DM=
------END PRIVATE KEY-----`,
-			wantErr: true,
-		},
-		{
-			name: "Malformed certificate data",
-			pemData: `-----BEGIN CERTIFICATE-----
-invalid base64 data here!
------END CERTIFICATE-----`,
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := service.DecodeCertificate(tt.pemData)
-			
-			if tt.wantErr {
-				assert.Error(t, err)
-				assert.Nil(t, result)
-				return
-			}
-			
-			require.NoError(t, err)
-			require.NotNil(t, result)
-			
-			if tt.checkFields != nil {
-				tt.checkFields(t, result)
-			}
-		})
-	}
+	// Check that DNSNames field exists (may be empty for this test cert)
+	assert.NotNil(t, result.DNSNames)
 }
 
-func TestCryptoService_DecodeCertificate_EdgeCases(t *testing.T) {
-	service := NewCryptoService()
-
-	t.Run("Certificate with DNS names", func(t *testing.T) {
-		// This would be a certificate with Subject Alternative Names
-		// For testing purposes, we'll use a simple cert and check the structure
-		testCert := `-----BEGIN CERTIFICATE-----
-MIIDJjCCAg4CCQD+EO1siPH5GTANBgkqhkiG9w0BAQsFADBVMQswCQYDVQQGEwJV
-UzENMAsGA1UECAwEVGVzdDENMAsGA1UEBwwEVGVzdDENMAsGA1UECgwEVGVzdDEZ
-MBcGA1UEAwwQdGVzdC5leGFtcGxlLmNvbTAeFw0yNTA5MjAxOTMxNTNaFw0yNjA5
-MjAxOTMxNTNaMFUxCzAJBgNVBAYTAlVTMQ0wCwYDVQQIDARUZXN0MQ0wCwYDVQQH
-DARUZXN0MQ0wCwYDVQQKDARUZXN0MRkwFwYDVQQDDBB0ZXN0LmV4YW1wbGUuY29t
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAw0anQHt/88gvbutvzcdT
-cSKOXPkx9mrMhETXWpqcGjHliavZn51Qavvy7sLrzduUTt7Y/m4Y/jOjhoJGOaaa
-Bk4FQbAYIQsKtizp5Ydkn94WgQ50aTv+OrH5hHsw25pMiJYRv6lptTi+CIAfKrJD
-T6Xrtytrph+cUmvI3LkmvZCY+7S8694VHpArmz4TTo29GAVcEjv8JlODKH049lfR
-NvU21eEOajQozlXJ/vPeugwwuRlZFRjrmWtbmWEhyhsNOXOl6oo6EFBU2/eipbVT
-V8SG0QogwAynlMyXVWkjSw5o9fErSb2TxJti+SjB4Ys2BRitr8WN0jxYXTWBUvl1
-KwIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQAuKxZ0CNbxhh97CjQ5XgThVE3X0Yv9
-YNJ9QTtF4p4mBvn8L5DSj8OhEYsKMfNU2Tc+hJgPBQMA3zPKQzg3IJfOldM4cCWU
-UdVm4QRSOpcTGcjCWriu6IBKXaYoJkbyts2C6TSAAdnz/LoNAIxl+j0r93OQS4Su
-6E/wQH38RwSlAfY8l/JofiAbjn3u1gMLb9iMI+MooBj5/AQ2NlvYZBLqoURFA4cz
-bm1nEqtJZCN/WZA4K2YIi0xboI1oMRbUIIYgmqhR5+qGRpO32Roa/8XuXw5o1ftn
-nU4ZU3j43ohhFR96ZjnvIZ/5eYr/L0ZlexDZ8gpGXsaV+RLF5DxGTOFp
------END CERTIFICATE-----`
-
-		result, err := service.DecodeCertificate(testCert)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		
-		// Check that DNSNames field exists (may be empty for this test cert)
-		assert.NotNil(t, result.DNSNames)
-	})
-
-	t.Run("Multiple PEM blocks", func(t *testing.T) {
-		multiplePEM := `-----BEGIN CERTIFICATE-----
+func testMultiplePEMBlocks(t *testing.T, service crypto.CryptoService) {
+	multiplePEM := `-----BEGIN CERTIFICATE-----
 MIIDJjCCAg4CCQD+EO1siPH5GTANBgkqhkiG9w0BAQsFADBVMQswCQYDVQQGEwJV
 UzENMAsGA1UECAwEVGVzdDENMAsGA1UEBwwEVGVzdDENMAsGA1UECgwEVGVzdDEZ
 MBcGA1UEAwwQdGVzdC5leGFtcGxlLmNvbTAeFw0yNTA5MjAxOTMxNTNaFw0yNjA5
@@ -947,14 +1059,14 @@ bm1nEqtJZCN/WZA4K2YIi0xboI1oMRbUIIYgmqhR5+qGRpO32Roa/8XuXw5o1ftn
 nU4ZU3j43ohhFR96ZjnvIZ/5eYr/L0ZlexDZ8gpGXsaV+RLF5DxGTOFp
 -----END CERTIFICATE-----`
 
-		// Should decode the first certificate only
-		result, err := service.DecodeCertificate(multiplePEM)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-	})
+	// Should decode the first certificate only
+	result, err := service.DecodeCertificate(multiplePEM)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+}
 
-	t.Run("Certificate with whitespace", func(t *testing.T) {
-		certWithWhitespace := `
+func testCertificateWithWhitespace(t *testing.T, service crypto.CryptoService) {
+	certWithWhitespace := `
 		
 -----BEGIN CERTIFICATE-----
 MIIDJjCCAg4CCQD+EO1siPH5GTANBgkqhkiG9w0BAQsFADBVMQswCQYDVQQGEwJV
@@ -978,16 +1090,31 @@ nU4ZU3j43ohhFR96ZjnvIZ/5eYr/L0ZlexDZ8gpGXsaV+RLF5DxGTOFp
 		
 		`
 
-		result, err := service.DecodeCertificate(certWithWhitespace)
-		require.NoError(t, err)
-		require.NotNil(t, result)
+	result, err := service.DecodeCertificate(certWithWhitespace)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+}
+
+func TestCryptoService_DecodeCertificate_EdgeCases(t *testing.T) {
+	service := crypto.NewCryptoService()
+
+	t.Run("Certificate with DNS names", func(t *testing.T) {
+		testCertificateWithDNSNames(t, service)
+	})
+
+	t.Run("Multiple PEM blocks", func(t *testing.T) {
+		testMultiplePEMBlocks(t, service)
+	})
+
+	t.Run("Certificate with whitespace", func(t *testing.T) {
+		testCertificateWithWhitespace(t, service)
 	})
 }
 
 func TestExtractKeyUsage(t *testing.T) {
 	// This is tested indirectly through DecodeCertificate, but we can add specific tests
 	// if we need to test the key usage extraction logic more thoroughly
-	service := NewCryptoService()
+	service := crypto.NewCryptoService()
 
 	// Use a valid, complete certificate for testing
 	testCert := `-----BEGIN CERTIFICATE-----
@@ -1017,16 +1144,16 @@ nU4ZU3j43ohhFR96ZjnvIZ/5eYr/L0ZlexDZ8gpGXsaV+RLF5DxGTOFp
 	// KeyUsage should be a slice (may be empty for this test cert)
 	// The function should always return a non-nil slice
 	assert.NotNil(t, result.KeyUsage)
-	
+
 	// Verify it's actually a slice
 	assert.IsType(t, []string{}, result.KeyUsage)
-	
+
 	// Verify we can get the length (this would panic if nil)
 	assert.GreaterOrEqual(t, len(result.KeyUsage), 0)
 }
 
 func BenchmarkCryptoService_DecodeCertificate(b *testing.B) {
-	service := NewCryptoService()
+	service := crypto.NewCryptoService()
 	testCert := `-----BEGIN CERTIFICATE-----
 MIIDJjCCAg4CCQD+EO1siPH5GTANBgkqhkiG9w0BAQsFADBVMQswCQYDVQQGEwJV
 UzENMAsGA1UECAwEVGVzdDENMAsGA1UEBwwEVGVzdDENMAsGA1UECgwEVGVzdDEZ

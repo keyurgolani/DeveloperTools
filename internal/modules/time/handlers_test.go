@@ -1,13 +1,15 @@
-package time
+package time_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/keyurgolani/DeveloperTools/internal/modules/time"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,20 +17,20 @@ import (
 func setupTestRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	
-	service := NewService()
-	handler := NewHandler(service, nil) // Pass nil for metrics in tests
-	
+
+	service := time.NewService()
+	handler := time.NewHandler(service, nil) // Pass nil for metrics in tests
+
 	v1 := router.Group("/api/v1")
 	handler.RegisterRoutes(v1)
-	
+
 	return router
 }
 
 func TestHandler_ConvertTime(t *testing.T) {
 	router := setupTestRouter()
 
-	req, err := http.NewRequest("POST", "/api/v1/time/convert", bytes.NewBuffer([]byte(`{
+	req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/time/convert", bytes.NewBuffer([]byte(`{
 		"input": "1703518245",
 		"inputFormat": "unix",
 		"outputFormat": "iso8601"
@@ -53,7 +55,7 @@ func TestHandler_ConvertTime(t *testing.T) {
 func TestHandler_GetCurrentTime(t *testing.T) {
 	router := setupTestRouter()
 
-	req, err := http.NewRequest("GET", "/api/v1/time/now", nil)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", "/api/v1/time/now", nil)
 	require.NoError(t, err)
 
 	w := httptest.NewRecorder()
@@ -67,7 +69,7 @@ func TestHandler_GetCurrentTime(t *testing.T) {
 
 	assert.True(t, response["success"].(bool))
 	data := response["data"].(map[string]interface{})
-	
+
 	// Verify all required fields are present
 	assert.Contains(t, data, "unixSeconds")
 	assert.Contains(t, data, "unixMilliseconds")

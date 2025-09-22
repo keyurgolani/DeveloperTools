@@ -12,7 +12,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// AuthMethod represents the authentication method type
+// AuthMethod represents the authentication method type.
 type AuthMethod string
 
 const (
@@ -21,33 +21,33 @@ const (
 	AuthMethodJWT    AuthMethod = "jwt"
 )
 
-// AuthConfig holds authentication configuration
+// AuthConfig holds authentication configuration.
 type AuthConfig struct {
-	Method     AuthMethod
-	APIKeys    []string // Valid API keys for API key authentication
-	JWTSecret  string   // Secret for JWT validation
-	JWTIssuer  string   // Expected JWT issuer
-	JWTAudience string  // Expected JWT audience
+	Method      AuthMethod
+	APIKeys     []string // Valid API keys for API key authentication
+	JWTSecret   string   // Secret for JWT validation
+	JWTIssuer   string   // Expected JWT issuer
+	JWTAudience string   // Expected JWT audience
 }
 
-// AuthMiddleware interface defines the authentication middleware contract
+// AuthMiddleware interface defines the authentication middleware contract.
 type AuthMiddleware interface {
 	Authenticate() gin.HandlerFunc
 }
 
-// NoAuthMiddleware implements no authentication
+// NoAuthMiddleware implements no authentication.
 type NoAuthMiddleware struct {
 	logger *slog.Logger
 }
 
-// NewNoAuthMiddleware creates a new no-auth middleware
+// NewNoAuthMiddleware creates a new no-auth middleware.
 func NewNoAuthMiddleware(logger *slog.Logger) *NoAuthMiddleware {
 	return &NoAuthMiddleware{
 		logger: logger,
 	}
 }
 
-// Authenticate returns a middleware that allows all requests
+// Authenticate returns a middleware that allows all requests.
 func (m *NoAuthMiddleware) Authenticate() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Set anonymous user context
@@ -57,13 +57,13 @@ func (m *NoAuthMiddleware) Authenticate() gin.HandlerFunc {
 	}
 }
 
-// APIKeyMiddleware implements API key authentication
+// APIKeyMiddleware implements API key authentication.
 type APIKeyMiddleware struct {
 	validKeys map[string]bool
 	logger    *slog.Logger
 }
 
-// NewAPIKeyMiddleware creates a new API key middleware
+// NewAPIKeyMiddleware creates a new API key middleware.
 func NewAPIKeyMiddleware(apiKeys []string, logger *slog.Logger) *APIKeyMiddleware {
 	validKeys := make(map[string]bool)
 	for _, key := range apiKeys {
@@ -78,7 +78,7 @@ func NewAPIKeyMiddleware(apiKeys []string, logger *slog.Logger) *APIKeyMiddlewar
 	}
 }
 
-// Authenticate returns a middleware that validates API keys
+// Authenticate returns a middleware that validates API keys.
 func (m *APIKeyMiddleware) Authenticate() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Check for API key in header
@@ -131,7 +131,7 @@ func (m *APIKeyMiddleware) Authenticate() gin.HandlerFunc {
 	}
 }
 
-// JWTMiddleware implements JWT authentication
+// JWTMiddleware implements JWT authentication.
 type JWTMiddleware struct {
 	secret   []byte
 	issuer   string
@@ -139,7 +139,7 @@ type JWTMiddleware struct {
 	logger   *slog.Logger
 }
 
-// NewJWTMiddleware creates a new JWT middleware
+// NewJWTMiddleware creates a new JWT middleware.
 func NewJWTMiddleware(secret, issuer, audience string, logger *slog.Logger) *JWTMiddleware {
 	return &JWTMiddleware{
 		secret:   []byte(secret),
@@ -149,141 +149,164 @@ func NewJWTMiddleware(secret, issuer, audience string, logger *slog.Logger) *JWT
 	}
 }
 
-// Authenticate returns a middleware that validates JWT tokens
+// Authenticate returns a middleware that validates JWT tokens.
 func (m *JWTMiddleware) Authenticate() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Get token from Authorization header
-		authHeader := c.GetHeader("Authorization")
-		if !strings.HasPrefix(authHeader, "Bearer ") {
-			m.logger.Warn("Missing or invalid Authorization header", "path", c.Request.URL.Path, "ip", c.ClientIP())
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": gin.H{
-					"code":    "MISSING_TOKEN",
-					"message": "Bearer token is required",
-				},
-			})
-			c.Abort()
-			return
-		}
-
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-
-		// Parse and validate JWT token
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			// Validate signing method
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-			}
-			return m.secret, nil
-		})
-
+		tokenString, err := m.extractToken(c)
 		if err != nil {
-			m.logger.Warn("JWT parsing error", "error", err.Error(), "path", c.Request.URL.Path, "ip", c.ClientIP())
-			
-			// Check if the error is specifically about token expiration
-			if strings.Contains(err.Error(), "token is expired") {
-				c.JSON(http.StatusUnauthorized, gin.H{
-					"error": gin.H{
-						"code":    "TOKEN_EXPIRED",
-						"message": "Token has expired",
-					},
-				})
-			} else {
-				c.JSON(http.StatusUnauthorized, gin.H{
-					"error": gin.H{
-						"code":    "INVALID_TOKEN",
-						"message": "Invalid or expired token",
-					},
-				})
-			}
-			c.Abort()
+			m.handleAuthError(c, "MISSING_TOKEN", "Bearer token is required")
 			return
 		}
 
-		// Validate token and claims
-		if !token.Valid {
-			m.logger.Warn("Invalid JWT token", "path", c.Request.URL.Path, "ip", c.ClientIP())
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": gin.H{
-					"code":    "INVALID_TOKEN",
-					"message": "Invalid token",
-				},
-			})
-			c.Abort()
+		token, err := m.parseToken(tokenString)
+		if err != nil {
+			m.handleTokenParseError(c, err)
 			return
 		}
 
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			m.logger.Warn("Invalid JWT claims", "path", c.Request.URL.Path, "ip", c.ClientIP())
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": gin.H{
-					"code":    "INVALID_CLAIMS",
-					"message": "Invalid token claims",
-				},
-			})
-			c.Abort()
-			return
+		claims, err := m.validateToken(token, c)
+		if err != nil {
+			return // Error already handled in validateToken
 		}
 
-		// Validate issuer if configured
-		if m.issuer != "" {
-			if iss, ok := claims["iss"].(string); !ok || iss != m.issuer {
-				m.logger.Warn("Invalid JWT issuer", "expected", m.issuer, "got", claims["iss"], "path", c.Request.URL.Path)
-				c.JSON(http.StatusUnauthorized, gin.H{
-					"error": gin.H{
-						"code":    "INVALID_ISSUER",
-						"message": "Invalid token issuer",
-					},
-				})
-				c.Abort()
-				return
-			}
+		err = m.validateClaims(claims, c)
+		if err != nil {
+			return // Error already handled in validateClaims
 		}
 
-		// Validate audience if configured
-		if m.audience != "" {
-			if aud, ok := claims["aud"].(string); !ok || aud != m.audience {
-				m.logger.Warn("Invalid JWT audience", "expected", m.audience, "got", claims["aud"], "path", c.Request.URL.Path)
-				c.JSON(http.StatusUnauthorized, gin.H{
-					"error": gin.H{
-						"code":    "INVALID_AUDIENCE",
-						"message": "Invalid token audience",
-					},
-				})
-				c.Abort()
-				return
-			}
-		}
-
-		// Validate expiration
-		if exp, ok := claims["exp"].(float64); ok {
-			if time.Now().Unix() > int64(exp) {
-				m.logger.Warn("Expired JWT token", "path", c.Request.URL.Path, "ip", c.ClientIP())
-				c.JSON(http.StatusUnauthorized, gin.H{
-					"error": gin.H{
-						"code":    "TOKEN_EXPIRED",
-						"message": "Token has expired",
-					},
-				})
-				c.Abort()
-				return
-			}
-		}
-
-		// Set authenticated user context
-		c.Set("auth_method", "jwt")
-		if sub, ok := claims["sub"].(string); ok {
-			c.Set("user_id", sub)
-		} else {
-			c.Set("user_id", "jwt_user")
-		}
-		c.Set("jwt_claims", claims)
+		m.setUserContext(c, claims)
 		c.Next()
 	}
 }
 
-// NewAuthMiddleware creates the appropriate authentication middleware based on config
+// extractToken extracts the JWT token from the Authorization header.
+func (m *JWTMiddleware) extractToken(c *gin.Context) (string, error) {
+	authHeader := c.GetHeader("Authorization")
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		m.logger.Warn("Missing or invalid Authorization header", "path", c.Request.URL.Path, "ip", c.ClientIP())
+		return "", fmt.Errorf("missing bearer token")
+	}
+	return strings.TrimPrefix(authHeader, "Bearer "), nil
+}
+
+// parseToken parses and validates the JWT token structure.
+func (m *JWTMiddleware) parseToken(tokenString string) (*jwt.Token, error) {
+	return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return m.secret, nil
+	})
+}
+
+// validateToken validates the token and extracts claims.
+func (m *JWTMiddleware) validateToken(token *jwt.Token, c *gin.Context) (jwt.MapClaims, error) {
+	if !token.Valid {
+		m.logger.Warn("Invalid JWT token", "path", c.Request.URL.Path, "ip", c.ClientIP())
+		m.handleAuthError(c, "INVALID_TOKEN", "Invalid token")
+		return nil, fmt.Errorf("invalid token")
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		m.logger.Warn("Invalid JWT claims", "path", c.Request.URL.Path, "ip", c.ClientIP())
+		m.handleAuthError(c, "INVALID_CLAIMS", "Invalid token claims")
+		return nil, fmt.Errorf("invalid claims")
+	}
+
+	return claims, nil
+}
+
+// validateClaims validates JWT claims (issuer, audience, expiration).
+func (m *JWTMiddleware) validateClaims(claims jwt.MapClaims, c *gin.Context) error {
+	if err := m.validateIssuer(claims, c); err != nil {
+		return err
+	}
+	if err := m.validateAudience(claims, c); err != nil {
+		return err
+	}
+	return m.validateExpiration(claims, c)
+}
+
+// validateIssuer validates the JWT issuer claim.
+func (m *JWTMiddleware) validateIssuer(claims jwt.MapClaims, c *gin.Context) error {
+	if m.issuer == "" {
+		return nil
+	}
+
+	iss, ok := claims["iss"].(string)
+	if !ok || iss != m.issuer {
+		m.logger.Warn("Invalid JWT issuer", "expected", m.issuer, "got", claims["iss"], "path", c.Request.URL.Path)
+		m.handleAuthError(c, "INVALID_ISSUER", "Invalid token issuer")
+		return fmt.Errorf("invalid issuer")
+	}
+	return nil
+}
+
+// validateAudience validates the JWT audience claim.
+func (m *JWTMiddleware) validateAudience(claims jwt.MapClaims, c *gin.Context) error {
+	if m.audience == "" {
+		return nil
+	}
+
+	aud, ok := claims["aud"].(string)
+	if !ok || aud != m.audience {
+		m.logger.Warn("Invalid JWT audience", "expected", m.audience, "got", claims["aud"], "path", c.Request.URL.Path)
+		m.handleAuthError(c, "INVALID_AUDIENCE", "Invalid token audience")
+		return fmt.Errorf("invalid audience")
+	}
+	return nil
+}
+
+// validateExpiration validates the JWT expiration claim.
+func (m *JWTMiddleware) validateExpiration(claims jwt.MapClaims, c *gin.Context) error {
+	exp, ok := claims["exp"].(float64)
+	if !ok {
+		return nil
+	}
+
+	if time.Now().Unix() > int64(exp) {
+		m.logger.Warn("Expired JWT token", "path", c.Request.URL.Path, "ip", c.ClientIP())
+		m.handleAuthError(c, "TOKEN_EXPIRED", "Token has expired")
+		return fmt.Errorf("token expired")
+	}
+	return nil
+}
+
+// setUserContext sets the authenticated user context.
+func (m *JWTMiddleware) setUserContext(c *gin.Context, claims jwt.MapClaims) {
+	c.Set("auth_method", "jwt")
+	if sub, ok := claims["sub"].(string); ok {
+		c.Set("user_id", sub)
+	} else {
+		c.Set("user_id", "jwt_user")
+	}
+	c.Set("jwt_claims", claims)
+}
+
+// handleTokenParseError handles JWT token parsing errors.
+func (m *JWTMiddleware) handleTokenParseError(c *gin.Context, err error) {
+	m.logger.Warn("JWT parsing error", "error", err.Error(), "path", c.Request.URL.Path, "ip", c.ClientIP())
+
+	if strings.Contains(err.Error(), "token is expired") {
+		m.handleAuthError(c, "TOKEN_EXPIRED", "Token has expired")
+	} else {
+		m.handleAuthError(c, "INVALID_TOKEN", "Invalid or expired token")
+	}
+}
+
+// handleAuthError handles authentication errors with consistent response format.
+func (m *JWTMiddleware) handleAuthError(c *gin.Context, code, message string) {
+	c.JSON(http.StatusUnauthorized, gin.H{
+		"error": gin.H{
+			"code":    code,
+			"message": message,
+		},
+	})
+	c.Abort()
+}
+
+// NewAuthMiddleware creates the appropriate authentication middleware based on config.
 func NewAuthMiddleware(config *AuthConfig, logger *slog.Logger) (AuthMiddleware, error) {
 	switch config.Method {
 	case AuthMethodNone:

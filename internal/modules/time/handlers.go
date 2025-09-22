@@ -3,18 +3,18 @@ package time
 import (
 	"net/http"
 
-	"dev-utilities/internal/metrics"
+	"github.com/keyurgolani/DeveloperTools/internal/metrics"
 
 	"github.com/gin-gonic/gin"
 )
 
-// Handler handles HTTP requests for time operations
+// Handler handles HTTP requests for time operations.
 type Handler struct {
 	service TimeService
 	metrics *metrics.Metrics
 }
 
-// NewHandler creates a new time handler
+// NewHandler creates a new time handler.
 func NewHandler(service TimeService, metrics *metrics.Metrics) *Handler {
 	return &Handler{
 		service: service,
@@ -22,7 +22,7 @@ func NewHandler(service TimeService, metrics *metrics.Metrics) *Handler {
 	}
 }
 
-// RegisterRoutes registers time routes with the router
+// RegisterRoutes registers time routes with the router.
 func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 	time := router.Group("/time")
 	{
@@ -31,7 +31,7 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 	}
 }
 
-// ConvertTime handles time conversion requests
+// ConvertTime handles time conversion requests.
 func (h *Handler) ConvertTime(c *gin.Context) {
 	var req TimeConvertRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -73,7 +73,7 @@ func (h *Handler) ConvertTime(c *gin.Context) {
 	})
 }
 
-// GetCurrentTime handles current time requests
+// GetCurrentTime handles current time requests.
 func (h *Handler) GetCurrentTime(c *gin.Context) {
 	timeResponse, err := h.service.GetCurrentTime()
 	if err != nil {

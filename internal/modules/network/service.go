@@ -1,6 +1,7 @@
 package network
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -9,7 +10,7 @@ import (
 	"time"
 )
 
-// NetworkService defines the interface for network operations
+// NetworkService defines the interface for network operations.
 type NetworkService interface {
 	ParseURL(urlStr string) (*URLParts, error)
 	BuildURL(parts *URLParts) (string, error)
@@ -18,18 +19,18 @@ type NetworkService interface {
 	AnalyzeIP(ip string) (*IPInfo, error)
 }
 
-// networkService implements the NetworkService interface
+// networkService implements the NetworkService interface.
 type networkService struct {
-	httpClient         *http.Client
+	httpClient            *http.Client
 	disableSSRFProtection bool
 }
 
-// NewNetworkService creates a new instance of NetworkService
+// NewNetworkService creates a new instance of NetworkService.
 func NewNetworkService() NetworkService {
 	return NewNetworkServiceWithOptions(false)
 }
 
-// NewNetworkServiceWithOptions creates a new instance of NetworkService with options
+// NewNetworkServiceWithOptions creates a new instance of NetworkService with options.
 func NewNetworkServiceWithOptions(disableSSRFProtection bool) NetworkService {
 	// Create HTTP client with timeout and disabled redirects
 	client := &http.Client{
@@ -45,7 +46,7 @@ func NewNetworkServiceWithOptions(disableSSRFProtection bool) NetworkService {
 	}
 }
 
-// ParseURL parses a URL into its constituent parts
+// ParseURL parses a URL into its constituent parts.
 func (s *networkService) ParseURL(urlStr string) (*URLParts, error) {
 	// Basic validation - empty URLs are invalid
 	if strings.TrimSpace(urlStr) == "" {
@@ -91,7 +92,7 @@ func (s *networkService) ParseURL(urlStr string) (*URLParts, error) {
 	return parts, nil
 }
 
-// BuildURL constructs a URL from provided components
+// BuildURL constructs a URL from provided components.
 func (s *networkService) BuildURL(parts *URLParts) (string, error) {
 	if parts.Scheme == "" {
 		return "", fmt.Errorf("scheme is required")
@@ -120,7 +121,7 @@ func (s *networkService) BuildURL(parts *URLParts) (string, error) {
 	return u.String(), nil
 }
 
-// GetHeaders makes an HTTP GET request and returns response headers with SSRF protection
+// GetHeaders makes an HTTP GET request and returns response headers with SSRF protection.
 func (s *networkService) GetHeaders(urlStr string) (*HeadersResponse, error) {
 	// Validate URL and implement SSRF protection (unless disabled for testing)
 	if !s.disableSSRFProtection {
@@ -130,7 +131,7 @@ func (s *networkService) GetHeaders(urlStr string) (*HeadersResponse, error) {
 	}
 
 	// Create request with custom User-Agent
-	req, err := http.NewRequest("GET", urlStr, nil)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", urlStr, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -183,15 +184,19 @@ func (s *networkService) validateURL(urlStr string) error {
 	}
 
 	// Resolve hostname to IP addresses
-	ips, err := net.LookupIP(hostname)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resolver := &net.Resolver{}
+	ips, err := resolver.LookupIPAddr(ctx, hostname)
 	if err != nil {
 		return fmt.Errorf("failed to resolve hostname: %w", err)
 	}
 
 	// Check each resolved IP against blocked ranges
-	for _, ip := range ips {
-		if s.isPrivateOrReservedIP(ip) {
-			return fmt.Errorf("access to private/reserved IP %s blocked", ip.String())
+	for _, ipAddr := range ips {
+		if s.isPrivateOrReservedIP(ipAddr.IP) {
+			return fmt.Errorf("access to private/reserved IP %s blocked", ipAddr.IP.String())
 		}
 	}
 
@@ -227,80 +232,137 @@ func (s *networkService) isPrivateOrReservedIP(ip net.IP) bool {
 
 // DNSLookup performs DNS resolution for various record types
 func (s *networkService) DNSLookup(domain, recordType string) (*DNSLookupResponse, error) {
-	var records []string
-	var err error
+	recordTypeUpper := strings.ToUpper(recordType)
 
-	switch strings.ToUpper(recordType) {
-	case "A":
-		ips, lookupErr := net.LookupIP(domain)
-		if lookupErr != nil {
-			err = lookupErr
-		} else {
-			for _, ip := range ips {
-				if ip.To4() != nil { // IPv4 only
-					records = append(records, ip.String())
-				}
-			}
-		}
-	case "AAAA":
-		ips, lookupErr := net.LookupIP(domain)
-		if lookupErr != nil {
-			err = lookupErr
-		} else {
-			for _, ip := range ips {
-				if ip.To4() == nil { // IPv6 only
-					records = append(records, ip.String())
-				}
-			}
-		}
-	case "MX":
-		mxRecords, lookupErr := net.LookupMX(domain)
-		if lookupErr != nil {
-			err = lookupErr
-		} else {
-			for _, mx := range mxRecords {
-				records = append(records, fmt.Sprintf("%d %s", mx.Pref, mx.Host))
-			}
-		}
-	case "TXT":
-		txtRecords, lookupErr := net.LookupTXT(domain)
-		if lookupErr != nil {
-			err = lookupErr
-		} else {
-			records = txtRecords
-		}
-	case "NS":
-		nsRecords, lookupErr := net.LookupNS(domain)
-		if lookupErr != nil {
-			err = lookupErr
-		} else {
-			for _, ns := range nsRecords {
-				records = append(records, ns.Host)
-			}
-		}
-	case "CNAME":
-		cname, lookupErr := net.LookupCNAME(domain)
-		if lookupErr != nil {
-			err = lookupErr
-		} else {
-			records = append(records, cname)
-		}
-	default:
-		return nil, fmt.Errorf("unsupported record type: %s", recordType)
-	}
-
+	records, err := s.performDNSLookup(domain, recordTypeUpper)
 	if err != nil {
 		return nil, fmt.Errorf("DNS lookup failed: %w", err)
 	}
 
-	response := &DNSLookupResponse{
+	return &DNSLookupResponse{
 		Domain:     domain,
-		RecordType: strings.ToUpper(recordType),
+		RecordType: recordTypeUpper,
 		Records:    records,
 		// TTL is not available through Go's standard net package
+	}, nil
+}
+
+// performDNSLookup performs the actual DNS lookup based on record type
+func (s *networkService) performDNSLookup(domain, recordType string) ([]string, error) {
+	switch recordType {
+	case "A":
+		return s.lookupARecords(domain)
+	case "AAAA":
+		return s.lookupAAAARecords(domain)
+	case "MX":
+		return s.lookupMXRecords(domain)
+	case "TXT":
+		return s.lookupTXTRecords(domain)
+	case "NS":
+		return s.lookupNSRecords(domain)
+	case "CNAME":
+		return s.lookupCNAMERecord(domain)
+	default:
+		return nil, fmt.Errorf("unsupported record type: %s", recordType)
+	}
+}
+
+// lookupARecords performs A record lookup (IPv4)
+func (s *networkService) lookupARecords(domain string) ([]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resolver := &net.Resolver{}
+	ips, err := resolver.LookupIPAddr(ctx, domain)
+	if err != nil {
+		return nil, err
 	}
 
-	return response, nil
+	var records []string
+	for _, ip := range ips {
+		if ip.IP.To4() != nil { // IPv4 only
+			records = append(records, ip.IP.String())
+		}
+	}
+	return records, nil
+}
+
+// lookupAAAARecords performs AAAA record lookup (IPv6)
+func (s *networkService) lookupAAAARecords(domain string) ([]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resolver := &net.Resolver{}
+	ips, err := resolver.LookupIPAddr(ctx, domain)
+	if err != nil {
+		return nil, err
+	}
+
+	var records []string
+	for _, ip := range ips {
+		if ip.IP.To4() == nil { // IPv6 only
+			records = append(records, ip.IP.String())
+		}
+	}
+	return records, nil
+}
+
+// lookupMXRecords performs MX record lookup
+func (s *networkService) lookupMXRecords(domain string) ([]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resolver := &net.Resolver{}
+	mxRecords, err := resolver.LookupMX(ctx, domain)
+	if err != nil {
+		return nil, err
+	}
+
+	var records []string
+	for _, mx := range mxRecords {
+		records = append(records, fmt.Sprintf("%d %s", mx.Pref, mx.Host))
+	}
+	return records, nil
+}
+
+// lookupTXTRecords performs TXT record lookup
+func (s *networkService) lookupTXTRecords(domain string) ([]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resolver := &net.Resolver{}
+	return resolver.LookupTXT(ctx, domain)
+}
+
+// lookupNSRecords performs NS record lookup
+func (s *networkService) lookupNSRecords(domain string) ([]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resolver := &net.Resolver{}
+	nsRecords, err := resolver.LookupNS(ctx, domain)
+	if err != nil {
+		return nil, err
+	}
+
+	var records []string
+	for _, ns := range nsRecords {
+		records = append(records, ns.Host)
+	}
+	return records, nil
+}
+
+// lookupCNAMERecord performs CNAME record lookup
+func (s *networkService) lookupCNAMERecord(domain string) ([]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resolver := &net.Resolver{}
+	cname, err := resolver.LookupCNAME(ctx, domain)
+	if err != nil {
+		return nil, err
+	}
+	return []string{cname}, nil
 }
 
 // AnalyzeIP validates and classifies an IP address

@@ -1,4 +1,4 @@
-package middleware
+package middleware_test
 
 import (
 	"encoding/json"
@@ -7,8 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"dev-utilities/internal/logging"
-	"dev-utilities/pkg/apierror"
+	"github.com/keyurgolani/DeveloperTools/internal/logging"
+	"github.com/keyurgolani/DeveloperTools/internal/middleware"
+	"github.com/keyurgolani/DeveloperTools/pkg/apierror"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -17,11 +18,23 @@ import (
 
 func TestErrorHandlerMiddleware(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
-	// Create a test logger
 	logger := logging.New("debug")
-	
-	tests := []struct {
+	tests := getErrorHandlerTestCases()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			executeErrorHandlerTest(t, logger, tt)
+		})
+	}
+}
+
+func getErrorHandlerTestCases() []struct {
+	name           string
+	handler        gin.HandlerFunc
+	expectedStatus int
+	expectedError  string
+} {
+	return []struct {
 		name           string
 		handler        gin.HandlerFunc
 		expectedStatus int
@@ -51,46 +64,70 @@ func TestErrorHandlerMiddleware(t *testing.T) {
 			expectedStatus: http.StatusOK,
 		},
 	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			router := gin.New()
-			
-			// Add request ID middleware first
-			router.Use(func(c *gin.Context) {
-				c.Set("request_id", "test-request-id")
-				c.Header("X-Request-ID", "test-request-id")
-				c.Next()
-			})
-			
-			// Add error handling middleware
-			router.Use(ErrorHandlerMiddleware(logger))
-			router.GET("/test", tt.handler)
-			
-			// Make request
-			req := httptest.NewRequest("GET", "/test", nil)
-			router.ServeHTTP(w, req)
-			
-			assert.Equal(t, tt.expectedStatus, w.Code)
-			
-			if tt.expectedError != "" {
-				var response apierror.ErrorResponse
-				err := json.Unmarshal(w.Body.Bytes(), &response)
-				require.NoError(t, err)
-				
-				assert.False(t, response.Success)
-				assert.Equal(t, tt.expectedError, response.Error.Code)
-				assert.Equal(t, "test-request-id", w.Header().Get("X-Request-ID"))
-			}
-		})
+func executeErrorHandlerTest(t *testing.T, logger *logging.Logger, tt struct {
+	name           string
+	handler        gin.HandlerFunc
+	expectedStatus int
+	expectedError  string
+}) {
+	w := httptest.NewRecorder()
+	router := setupErrorHandlerRouter(logger, tt.handler)
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, tt.expectedStatus, w.Code)
+	if tt.expectedError != "" {
+		verifyErrorResponse(t, w, tt.expectedError)
 	}
+}
+
+func setupErrorHandlerRouter(logger *logging.Logger, handler gin.HandlerFunc) *gin.Engine {
+	router := gin.New()
+
+	// Add request ID middleware first
+	router.Use(func(c *gin.Context) {
+		c.Set("request_id", "test-request-id")
+		c.Header("X-Request-ID", "test-request-id")
+		c.Next()
+	})
+
+	// Add error handling middleware
+	router.Use(middleware.ErrorHandlerMiddleware(logger))
+	router.GET("/test", handler)
+	return router
+}
+
+func verifyErrorResponse(t *testing.T, w *httptest.ResponseRecorder, expectedError string) {
+	var response apierror.ErrorResponse
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+
+	assert.False(t, response.Success)
+	assert.Equal(t, expectedError, response.Error.Code)
+	assert.Equal(t, "test-request-id", w.Header().Get("X-Request-ID"))
 }
 
 func TestErrorResponseMiddleware(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
-	tests := []struct {
+	tests := getErrorResponseTestCases()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			executeErrorResponseTest(t, tt)
+		})
+	}
+}
+
+func getErrorResponseTestCases() []struct {
+	name           string
+	handler        gin.HandlerFunc
+	expectedStatus int
+	expectedError  string
+} {
+	return []struct {
 		name           string
 		handler        gin.HandlerFunc
 		expectedStatus int
@@ -100,7 +137,7 @@ func TestErrorResponseMiddleware(t *testing.T) {
 			name: "handles APIError in context",
 			handler: func(c *gin.Context) {
 				apiErr := apierror.NewValidationError("test validation error", "details")
-				c.Error(apiErr)
+				_ = c.Error(apiErr)
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "VALIDATION_ERROR",
@@ -108,7 +145,7 @@ func TestErrorResponseMiddleware(t *testing.T) {
 		{
 			name: "handles generic error in context",
 			handler: func(c *gin.Context) {
-				c.Error(errors.New("generic error"))
+				_ = c.Error(errors.New("generic error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedError:  "INTERNAL_ERROR",
@@ -121,54 +158,58 @@ func TestErrorResponseMiddleware(t *testing.T) {
 			expectedStatus: http.StatusOK,
 		},
 	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			c, router := gin.CreateTestContext(w)
-			
-			// Add middleware
-			router.Use(ErrorResponseMiddleware())
-			router.GET("/test", tt.handler)
-			
-			// Make request
-			req := httptest.NewRequest("GET", "/test", nil)
-			c.Request = req
-			router.ServeHTTP(w, req)
-			
-			assert.Equal(t, tt.expectedStatus, w.Code)
-			
-			if tt.expectedError != "" {
-				var response apierror.ErrorResponse
-				err := json.Unmarshal(w.Body.Bytes(), &response)
-				require.NoError(t, err)
-				
-				assert.False(t, response.Success)
-				assert.Equal(t, tt.expectedError, response.Error.Code)
-			}
-		})
+func executeErrorResponseTest(t *testing.T, tt struct {
+	name           string
+	handler        gin.HandlerFunc
+	expectedStatus int
+	expectedError  string
+}) {
+	w := httptest.NewRecorder()
+	c, router := gin.CreateTestContext(w)
+
+	router.Use(middleware.ErrorResponseMiddleware())
+	router.GET("/test", tt.handler)
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	c.Request = req
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, tt.expectedStatus, w.Code)
+	if tt.expectedError != "" {
+		verifyErrorResponseCode(t, w, tt.expectedError)
 	}
+}
+
+func verifyErrorResponseCode(t *testing.T, w *httptest.ResponseRecorder, expectedError string) {
+	var response apierror.ErrorResponse
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+
+	assert.False(t, response.Success)
+	assert.Equal(t, expectedError, response.Error.Code)
 }
 
 func TestNotFoundHandler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	w := httptest.NewRecorder()
 	router := gin.New()
-	
+
 	// Set up 404 handler
-	router.NoRoute(NotFoundHandler())
-	
+	router.NoRoute(middleware.NotFoundHandler())
+
 	// Make request to non-existent endpoint
 	req := httptest.NewRequest("GET", "/nonexistent", nil)
 	router.ServeHTTP(w, req)
-	
+
 	assert.Equal(t, http.StatusNotFound, w.Code)
-	
+
 	var response apierror.ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
-	
+
 	assert.False(t, response.Success)
 	assert.Equal(t, "NOT_FOUND", response.Error.Code)
 	assert.Equal(t, "Endpoint not found", response.Error.Message)
@@ -176,21 +217,21 @@ func TestNotFoundHandler(t *testing.T) {
 
 func TestMethodNotAllowedHandler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	
+
 	// Test the handler directly since Gin's NoMethod behavior is complex
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	
+
 	// Call the handler directly
-	handler := MethodNotAllowedHandler()
+	handler := middleware.MethodNotAllowedHandler()
 	handler(c)
-	
+
 	assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
-	
+
 	var response apierror.ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
-	
+
 	assert.False(t, response.Success)
 	assert.Equal(t, "METHOD_NOT_ALLOWED", response.Error.Code)
 	assert.Equal(t, "Method not allowed", response.Error.Message)

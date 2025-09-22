@@ -9,13 +9,15 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
-// OpenAPISpec represents a simplified OpenAPI specification
+// OpenAPISpec represents a simplified OpenAPI specification.
 type OpenAPISpec struct {
-	OpenAPI string                 `yaml:"openapi"`
-	Info    OpenAPIInfo            `yaml:"info"`
-	Paths   map[string]PathItem    `yaml:"paths"`
+	OpenAPI    string              `yaml:"openapi"`
+	Info       OpenAPIInfo         `yaml:"info"`
+	Paths      map[string]PathItem `yaml:"paths"`
 	Components OpenAPIComponents   `yaml:"components"`
 }
 
@@ -33,12 +35,12 @@ type PathItem struct {
 }
 
 type Operation struct {
-	Tags        []string              `yaml:"tags,omitempty"`
-	Summary     string                `yaml:"summary,omitempty"`
-	Description string                `yaml:"description,omitempty"`
-	OperationID string                `yaml:"operationId,omitempty"`
-	RequestBody *RequestBody          `yaml:"requestBody,omitempty"`
-	Responses   map[string]Response   `yaml:"responses"`
+	Tags        []string            `yaml:"tags,omitempty"`
+	Summary     string              `yaml:"summary,omitempty"`
+	Description string              `yaml:"description,omitempty"`
+	OperationID string              `yaml:"operationId,omitempty"`
+	RequestBody *RequestBody        `yaml:"requestBody,omitempty"`
+	Responses   map[string]Response `yaml:"responses"`
 }
 
 type RequestBody struct {
@@ -68,24 +70,24 @@ type Schema struct {
 }
 
 type OpenAPIComponents struct {
-	Schemas   map[string]Schema `yaml:"schemas,omitempty"`
+	Schemas   map[string]Schema   `yaml:"schemas,omitempty"`
 	Responses map[string]Response `yaml:"responses,omitempty"`
 }
 
-// ValidationResult represents the result of API validation
+// ValidationResult represents the result of API validation.
 type ValidationResult struct {
-	Valid   bool     `json:"valid"`
-	Errors  []string `json:"errors,omitempty"`
+	Valid    bool     `json:"valid"`
+	Errors   []string `json:"errors,omitempty"`
 	Warnings []string `json:"warnings,omitempty"`
 }
 
-// APIValidator validates API implementation against OpenAPI specification
+// APIValidator validates API implementation against OpenAPI specification.
 type APIValidator struct {
 	spec   *OpenAPISpec
 	router *gin.Engine
 }
 
-// NewAPIValidator creates a new API validator
+// NewAPIValidator creates a new API validator.
 func NewAPIValidator(specPath string, router *gin.Engine) (*APIValidator, error) {
 	// In a real implementation, we would read and parse the OpenAPI spec file
 	// For now, we'll create a basic validator structure
@@ -95,14 +97,14 @@ func NewAPIValidator(specPath string, router *gin.Engine) (*APIValidator, error)
 	}, nil
 }
 
-// LoadSpec loads the OpenAPI specification from a file
+// LoadSpec loads the OpenAPI specification from a file.
 func (v *APIValidator) LoadSpec(specData []byte) error {
 	// For now, we'll skip YAML parsing since we don't have the dependency
 	// In a real implementation, we would parse the YAML spec
 	return nil
 }
 
-// ValidateEndpoints validates that all endpoints defined in the spec are implemented
+// ValidateEndpoints validates that all endpoints defined in the spec are implemented.
 func (v *APIValidator) ValidateEndpoints() *ValidationResult {
 	result := &ValidationResult{
 		Valid:    true,
@@ -113,7 +115,7 @@ func (v *APIValidator) ValidateEndpoints() *ValidationResult {
 	// Get all routes from Gin router
 	routes := v.router.Routes()
 	routeMap := make(map[string]map[string]bool)
-	
+
 	for _, route := range routes {
 		if routeMap[route.Path] == nil {
 			routeMap[route.Path] = make(map[string]bool)
@@ -125,28 +127,28 @@ func (v *APIValidator) ValidateEndpoints() *ValidationResult {
 	for path, pathItem := range v.spec.Paths {
 		// Convert OpenAPI path format to Gin path format if needed
 		ginPath := convertOpenAPIPathToGin(path)
-		
+
 		if pathItem.Get != nil {
 			if !routeMap[ginPath]["get"] {
 				result.Errors = append(result.Errors, fmt.Sprintf("GET %s endpoint not implemented", path))
 				result.Valid = false
 			}
 		}
-		
+
 		if pathItem.Post != nil {
 			if !routeMap[ginPath]["post"] {
 				result.Errors = append(result.Errors, fmt.Sprintf("POST %s endpoint not implemented", path))
 				result.Valid = false
 			}
 		}
-		
+
 		if pathItem.Put != nil {
 			if !routeMap[ginPath]["put"] {
 				result.Errors = append(result.Errors, fmt.Sprintf("PUT %s endpoint not implemented", path))
 				result.Valid = false
 			}
 		}
-		
+
 		if pathItem.Delete != nil {
 			if !routeMap[ginPath]["delete"] {
 				result.Errors = append(result.Errors, fmt.Sprintf("DELETE %s endpoint not implemented", path))
@@ -169,13 +171,13 @@ func (v *APIValidator) ValidateResponseFormats() *ValidationResult {
 	// Test each endpoint with sample requests
 	for path, pathItem := range v.spec.Paths {
 		ginPath := convertOpenAPIPathToGin(path)
-		
+
 		if pathItem.Get != nil {
 			if err := v.validateEndpointResponse("GET", ginPath, nil, pathItem.Get); err != nil {
 				result.Warnings = append(result.Warnings, fmt.Sprintf("GET %s: %v", path, err))
 			}
 		}
-		
+
 		if pathItem.Post != nil {
 			// For POST endpoints, we would need to create valid request bodies
 			// This is a simplified validation
@@ -195,44 +197,29 @@ func (v *APIValidator) validateEndpointResponse(method, path string, body io.Rea
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	
+
 	// Create a response recorder
 	w := httptest.NewRecorder()
-	
+
 	// Serve the request
 	v.router.ServeHTTP(w, req)
-	
+
 	// Check if the response format matches expectations
 	if w.Code == http.StatusNotFound {
 		return fmt.Errorf("endpoint not found")
 	}
-	
+
 	// Parse response body
 	var responseBody map[string]interface{}
 	if err := json.Unmarshal(w.Body.Bytes(), &responseBody); err != nil {
 		return fmt.Errorf("invalid JSON response: %v", err)
 	}
-	
+
 	// Check for standard response format
 	if w.Code >= 200 && w.Code < 300 {
-		// Success response should have "success" and "data" fields
-		if success, ok := responseBody["success"]; !ok || success != true {
-			return fmt.Errorf("success response missing 'success: true' field")
-		}
-		if _, ok := responseBody["data"]; !ok {
-			return fmt.Errorf("success response missing 'data' field")
-		}
-	} else {
-		// Error response should have "success" and "error" fields
-		if success, ok := responseBody["success"]; !ok || success != false {
-			return fmt.Errorf("error response missing 'success: false' field")
-		}
-		if _, ok := responseBody["error"]; !ok {
-			return fmt.Errorf("error response missing 'error' field")
-		}
+		return validateSuccessResponse(responseBody)
 	}
-	
-	return nil
+	return validateErrorResponse(responseBody)
 }
 
 // convertOpenAPIPathToGin converts OpenAPI path format to Gin path format
@@ -261,14 +248,42 @@ func (v *APIValidator) ValidateSchemas() *ValidationResult {
 	return result
 }
 
+// validateSuccessResponse validates the format of a success response
+func validateSuccessResponse(responseBody map[string]interface{}) error {
+	success, ok := responseBody["success"]
+	if !ok || success != true {
+		return fmt.Errorf("success response missing 'success: true' field")
+	}
+
+	if _, ok := responseBody["data"]; !ok {
+		return fmt.Errorf("success response missing 'data' field")
+	}
+
+	return nil
+}
+
+// validateErrorResponse validates the format of an error response
+func validateErrorResponse(responseBody map[string]interface{}) error {
+	success, ok := responseBody["success"]
+	if !ok || success != false {
+		return fmt.Errorf("error response missing 'success: false' field")
+	}
+
+	if _, ok := responseBody["error"]; !ok {
+		return fmt.Errorf("error response missing 'error' field")
+	}
+
+	return nil
+}
+
 // GenerateValidationReport generates a comprehensive validation report
 func (v *APIValidator) GenerateValidationReport() map[string]*ValidationResult {
 	report := make(map[string]*ValidationResult)
-	
+
 	report["endpoints"] = v.ValidateEndpoints()
 	report["responses"] = v.ValidateResponseFormats()
 	report["schemas"] = v.ValidateSchemas()
-	
+
 	return report
 }
 
@@ -286,23 +301,24 @@ func IsValidationPassing(report map[string]*ValidationResult) bool {
 func PrintValidationReport(report map[string]*ValidationResult) {
 	fmt.Println("🔍 API Validation Report")
 	fmt.Println("========================")
-	
+
 	for category, result := range report {
-		fmt.Printf("\n📋 %s Validation:\n", strings.Title(category))
-		
+		caser := cases.Title(language.English)
+		fmt.Printf("\n📋 %s Validation:\n", caser.String(category))
+
 		if result.Valid {
 			fmt.Println("  ✅ PASSED")
 		} else {
 			fmt.Println("  ❌ FAILED")
 		}
-		
+
 		if len(result.Errors) > 0 {
 			fmt.Println("  Errors:")
 			for _, err := range result.Errors {
 				fmt.Printf("    - %s\n", err)
 			}
 		}
-		
+
 		if len(result.Warnings) > 0 {
 			fmt.Println("  Warnings:")
 			for _, warning := range result.Warnings {
@@ -310,7 +326,7 @@ func PrintValidationReport(report map[string]*ValidationResult) {
 			}
 		}
 	}
-	
+
 	fmt.Println("\n" + strings.Repeat("=", 50))
 	if IsValidationPassing(report) {
 		fmt.Println("🎉 All validations PASSED!")

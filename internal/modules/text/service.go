@@ -10,7 +10,11 @@ import (
 	"unicode"
 )
 
-// TextService defines the interface for text manipulation operations
+const (
+	sortOrderAsc = "asc"
+)
+
+// TextService defines the interface for text manipulation operations.
 type TextService interface {
 	ConvertCase(content, caseType string) (string, error)
 	AnalyzeText(content string) (*TextInfo, error)
@@ -19,15 +23,15 @@ type TextService interface {
 	SortText(content, order, sortType string) (string, error)
 }
 
-// textService implements the TextService interface
+// textService implements the TextService interface.
 type textService struct{}
 
-// NewTextService creates a new instance of TextService
+// NewTextService creates a new instance of TextService.
 func NewTextService() TextService {
 	return &textService{}
 }
 
-// ConvertCase converts text to the specified case type
+// ConvertCase converts text to the specified case type.
 func (s *textService) ConvertCase(content, caseType string) (string, error) {
 	switch caseType {
 	case "UPPERCASE":
@@ -51,15 +55,15 @@ func (s *textService) ConvertCase(content, caseType string) (string, error) {
 	}
 }
 
-// toSentenceCase converts text to sentence case (first letter uppercase, rest lowercase)
+// toSentenceCase converts text to sentence case (first letter uppercase, rest lowercase).
 func (s *textService) toSentenceCase(content string) string {
 	if len(content) == 0 {
 		return content
 	}
-	
+
 	runes := []rune(content)
 	result := make([]rune, len(runes))
-	
+
 	// Find the first letter and make it uppercase
 	firstLetterFound := false
 	for i, r := range runes {
@@ -70,7 +74,7 @@ func (s *textService) toSentenceCase(content string) string {
 			result[i] = unicode.ToLower(r)
 		}
 	}
-	
+
 	return string(result)
 }
 
@@ -80,14 +84,14 @@ func (s *textService) toCamelCase(content string) string {
 	if len(words) == 0 {
 		return ""
 	}
-	
+
 	result := strings.ToLower(words[0])
 	for i := 1; i < len(words); i++ {
 		if len(words[i]) > 0 {
 			result += strings.ToUpper(string(words[i][0])) + strings.ToLower(words[i][1:])
 		}
 	}
-	
+
 	return result
 }
 
@@ -95,13 +99,13 @@ func (s *textService) toCamelCase(content string) string {
 func (s *textService) toPascalCase(content string) string {
 	words := s.splitIntoWords(content)
 	var result strings.Builder
-	
+
 	for _, word := range words {
 		if len(word) > 0 {
 			result.WriteString(strings.ToUpper(string(word[0])) + strings.ToLower(word[1:]))
 		}
 	}
-	
+
 	return result.String()
 }
 
@@ -109,13 +113,13 @@ func (s *textService) toPascalCase(content string) string {
 func (s *textService) toSnakeCase(content string) string {
 	words := s.splitIntoWords(content)
 	var result []string
-	
+
 	for _, word := range words {
 		if len(word) > 0 {
 			result = append(result, strings.ToLower(word))
 		}
 	}
-	
+
 	return strings.Join(result, "_")
 }
 
@@ -123,13 +127,13 @@ func (s *textService) toSnakeCase(content string) string {
 func (s *textService) toTitleCase(content string) string {
 	words := s.splitIntoWords(content)
 	var result []string
-	
+
 	for _, word := range words {
 		if len(word) > 0 {
 			result = append(result, strings.ToUpper(string(word[0]))+strings.ToLower(word[1:]))
 		}
 	}
-	
+
 	return strings.Join(result, " ")
 }
 
@@ -137,22 +141,22 @@ func (s *textService) toTitleCase(content string) string {
 func (s *textService) toKebabCase(content string) string {
 	words := s.splitIntoWords(content)
 	var result []string
-	
+
 	for _, word := range words {
 		if len(word) > 0 {
 			result = append(result, strings.ToLower(word))
 		}
 	}
-	
+
 	return strings.Join(result, "-")
 }
 
 // splitIntoWords splits content into words by whitespace and punctuation
 func (s *textService) splitIntoWords(content string) []string {
 	// Split by whitespace and common punctuation
-	re := regexp.MustCompile(`[\s\-_.,;:!?()[\]{}@#$%^&*+=<>/\\|~`+"`"+`]+`)
+	re := regexp.MustCompile(`[\s\-_.,;:!?()[\]{}@#$%^&*+=<>/\\|~` + "`" + `]+`)
 	words := re.Split(content, -1)
-	
+
 	// Filter out empty strings
 	var result []string
 	for _, word := range words {
@@ -160,25 +164,25 @@ func (s *textService) splitIntoWords(content string) []string {
 			result = append(result, strings.TrimSpace(word))
 		}
 	}
-	
+
 	// Return empty slice instead of nil
 	if result == nil {
 		return []string{}
 	}
-	
+
 	return result
 }
 
 // AnalyzeText analyzes text and returns various statistics
 func (s *textService) AnalyzeText(content string) (*TextInfo, error) {
 	info := &TextInfo{
-		CharacterCount: len([]rune(content)),                    // Unicode-correct character count
-		WordCount:      s.countWords(content),                   // Word count
-		LineCount:      s.countLines(content),                   // Line count
-		SentenceCount:  s.countSentences(content),               // Sentence count
-		ByteSize:       len([]byte(content)),                    // Byte size
+		CharacterCount: len([]rune(content)),      // Unicode-correct character count
+		WordCount:      s.countWords(content),     // Word count
+		LineCount:      s.countLines(content),     // Line count
+		SentenceCount:  s.countSentences(content), // Sentence count
+		ByteSize:       len([]byte(content)),      // Byte size
 	}
-	
+
 	return info, nil
 }
 
@@ -187,11 +191,11 @@ func (s *textService) countWords(content string) int {
 	if len(strings.TrimSpace(content)) == 0 {
 		return 0
 	}
-	
+
 	// Split on whitespace regex
 	re := regexp.MustCompile(`\s+`)
 	words := re.Split(strings.TrimSpace(content), -1)
-	
+
 	// Filter out empty strings
 	count := 0
 	for _, word := range words {
@@ -199,7 +203,7 @@ func (s *textService) countWords(content string) int {
 			count++
 		}
 	}
-	
+
 	return count
 }
 
@@ -208,7 +212,7 @@ func (s *textService) countLines(content string) int {
 	if len(content) == 0 {
 		return 0
 	}
-	
+
 	lines := strings.Split(content, "\n")
 	return len(lines)
 }
@@ -218,18 +222,18 @@ func (s *textService) countSentences(content string) int {
 	if len(strings.TrimSpace(content)) == 0 {
 		return 0
 	}
-	
+
 	// Regex to match sentence endings: ., ?, ! followed by space or end of string
 	re := regexp.MustCompile(`[.!?](?:\s|$)`)
 	matches := re.FindAllString(content, -1)
-	
+
 	count := len(matches)
-	
+
 	// If no sentence endings found but content exists, count as 1 sentence
 	if count == 0 && len(strings.TrimSpace(content)) > 0 {
 		return 1
 	}
-	
+
 	return count
 }
 
@@ -240,18 +244,18 @@ func (s *textService) TestRegex(content, pattern, flags string) (*RegexTestRespo
 	if err != nil {
 		return nil, fmt.Errorf("invalid regex pattern: %w", err)
 	}
-	
+
 	// Find all matches
 	matches := compiled.FindAllString(content, -1)
 	if matches == nil {
 		matches = []string{} // Return empty slice instead of nil
 	}
-	
+
 	response := &RegexTestResponse{
 		Matches: matches,
 		Pattern: pattern,
 	}
-	
+
 	return response, nil
 }
 
@@ -262,7 +266,7 @@ func (s *textService) FormatJSON(content, action string, indent int) (string, er
 	if err := json.Unmarshal([]byte(content), &jsonData); err != nil {
 		return "", fmt.Errorf("invalid JSON: %w", err)
 	}
-	
+
 	switch action {
 	case "format":
 		// Format with indentation
@@ -270,23 +274,23 @@ func (s *textService) FormatJSON(content, action string, indent int) (string, er
 		if indent <= 0 {
 			indentStr = "  " // Default to 2 spaces
 		}
-		
+
 		formatted, err := json.MarshalIndent(jsonData, "", indentStr)
 		if err != nil {
 			return "", fmt.Errorf("failed to format JSON: %w", err)
 		}
-		
+
 		return string(formatted), nil
-		
+
 	case "minify":
 		// Minify (no indentation)
 		minified, err := json.Marshal(jsonData)
 		if err != nil {
 			return "", fmt.Errorf("failed to minify JSON: %w", err)
 		}
-		
+
 		return string(minified), nil
-		
+
 	default:
 		return "", fmt.Errorf("unsupported action: %s", action)
 	}
@@ -297,46 +301,59 @@ func (s *textService) SortText(content, order, sortType string) (string, error) 
 	if len(strings.TrimSpace(content)) == 0 {
 		return content, nil
 	}
-	
+
 	lines := strings.Split(content, "\n")
-	
+
 	switch sortType {
 	case "alpha":
 		// Alphabetical sorting
-		if order == "asc" {
+		switch order {
+		case sortOrderAsc:
 			sort.Strings(lines)
-		} else if order == "desc" {
+		case "desc":
 			sort.Sort(sort.Reverse(sort.StringSlice(lines)))
-		} else {
+		default:
 			return "", fmt.Errorf("unsupported order: %s", order)
 		}
-		
+
 	case "numeric":
 		// Numerical sorting
 		err := s.sortLinesNumerically(lines, order)
 		if err != nil {
 			return "", fmt.Errorf("failed to sort numerically: %w", err)
 		}
-		
+
 	default:
 		return "", fmt.Errorf("unsupported sort type: %s", sortType)
 	}
-	
+
 	return strings.Join(lines, "\n"), nil
+}
+
+// lineWithValue holds a line with its parsed numeric value
+type lineWithValue struct {
+	line  string
+	value float64
+	isNum bool
 }
 
 // sortLinesNumerically sorts lines numerically
 func (s *textService) sortLinesNumerically(lines []string, order string) error {
-	// Create a slice of structs to hold both the original line and its numeric value
-	type lineWithValue struct {
-		line  string
-		value float64
-		isNum bool
+	if order != sortOrderAsc && order != "desc" {
+		return fmt.Errorf("unsupported order: %s", order)
 	}
-	
+
+	lineValues := s.parseLinesToValues(lines)
+	s.sortLineValues(lineValues, order)
+	s.updateLinesFromValues(lines, lineValues)
+
+	return nil
+}
+
+// parseLinesToValues parses lines and extracts numeric values
+func (s *textService) parseLinesToValues(lines []string) []lineWithValue {
 	lineValues := make([]lineWithValue, len(lines))
-	
-	// Parse each line to extract numeric value
+
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if val, err := strconv.ParseFloat(trimmed, 64); err == nil {
@@ -346,48 +363,51 @@ func (s *textService) sortLinesNumerically(lines []string, order string) error {
 			lineValues[i] = lineWithValue{line: line, value: 0, isNum: false}
 		}
 	}
-	
-	// Sort based on order
-	if order == "asc" {
+
+	return lineValues
+}
+
+// sortLineValues sorts the line values based on the specified order
+func (s *textService) sortLineValues(lineValues []lineWithValue, order string) {
+	if order == sortOrderAsc {
 		sort.Slice(lineValues, func(i, j int) bool {
-			// Non-numeric lines go to the end
-			if !lineValues[i].isNum && lineValues[j].isNum {
-				return false
-			}
-			if lineValues[i].isNum && !lineValues[j].isNum {
-				return true
-			}
-			// Both numeric or both non-numeric
-			if lineValues[i].isNum && lineValues[j].isNum {
-				return lineValues[i].value < lineValues[j].value
-			}
-			// Both non-numeric, sort alphabetically
-			return lineValues[i].line < lineValues[j].line
-		})
-	} else if order == "desc" {
-		sort.Slice(lineValues, func(i, j int) bool {
-			// Non-numeric lines go to the end
-			if !lineValues[i].isNum && lineValues[j].isNum {
-				return false
-			}
-			if lineValues[i].isNum && !lineValues[j].isNum {
-				return true
-			}
-			// Both numeric or both non-numeric
-			if lineValues[i].isNum && lineValues[j].isNum {
-				return lineValues[i].value > lineValues[j].value
-			}
-			// Both non-numeric, sort alphabetically (reverse)
-			return lineValues[i].line > lineValues[j].line
+			return s.compareLineValues(lineValues[i], lineValues[j], true)
 		})
 	} else {
-		return fmt.Errorf("unsupported order: %s", order)
+		sort.Slice(lineValues, func(i, j int) bool {
+			return s.compareLineValues(lineValues[i], lineValues[j], false)
+		})
 	}
-	
-	// Update the original lines slice
+}
+
+// compareLineValues compares two line values with the specified order
+func (s *textService) compareLineValues(a, b lineWithValue, ascending bool) bool {
+	// Non-numeric lines go to the end
+	if !a.isNum && b.isNum {
+		return false
+	}
+	if a.isNum && !b.isNum {
+		return true
+	}
+
+	// Both numeric
+	if a.isNum && b.isNum {
+		if ascending {
+			return a.value < b.value
+		}
+		return a.value > b.value
+	}
+
+	// Both non-numeric, sort alphabetically
+	if ascending {
+		return a.line < b.line
+	}
+	return a.line > b.line
+}
+
+// updateLinesFromValues updates the original lines slice with sorted values
+func (s *textService) updateLinesFromValues(lines []string, lineValues []lineWithValue) {
 	for i, lv := range lineValues {
 		lines[i] = lv.line
 	}
-	
-	return nil
 }

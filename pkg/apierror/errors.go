@@ -7,36 +7,36 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// APIError represents a standardized API error
+// APIError represents a standardized API error.
 type APIError struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
 	Details string `json:"details,omitempty"`
 }
 
-// ErrorResponse represents the standard error response format
+// ErrorResponse represents the standard error response format.
 type ErrorResponse struct {
 	Success bool     `json:"success"`
 	Error   APIError `json:"error"`
 }
 
-// SuccessResponse represents the standard success response format
+// SuccessResponse represents the standard success response format.
 type SuccessResponse struct {
 	Success bool        `json:"success"`
 	Data    interface{} `json:"data"`
 }
 
-// Common error codes
+// Common error codes.
 const (
-	CodeValidationError    = "VALIDATION_ERROR"
+	CodeValidationError     = "VALIDATION_ERROR"
 	CodeAuthenticationError = "AUTHENTICATION_ERROR"
-	CodeAuthorizationError = "AUTHORIZATION_ERROR"
-	CodeRateLimitError     = "RATE_LIMIT_ERROR"
-	CodeInternalError      = "INTERNAL_ERROR"
-	CodeServiceUnavailable = "SERVICE_UNAVAILABLE"
+	CodeAuthorizationError  = "AUTHORIZATION_ERROR"
+	CodeRateLimitError      = "RATE_LIMIT_ERROR"
+	CodeInternalError       = "INTERNAL_ERROR"
+	CodeServiceUnavailable  = "SERVICE_UNAVAILABLE"
 )
 
-// NewValidationError creates a validation error
+// NewValidationError creates a validation error.
 func NewValidationError(message, details string) *APIError {
 	return &APIError{
 		Code:    CodeValidationError,
@@ -45,7 +45,7 @@ func NewValidationError(message, details string) *APIError {
 	}
 }
 
-// NewAuthenticationError creates an authentication error
+// NewAuthenticationError creates an authentication error.
 func NewAuthenticationError(message string) *APIError {
 	return &APIError{
 		Code:    CodeAuthenticationError,
@@ -53,7 +53,7 @@ func NewAuthenticationError(message string) *APIError {
 	}
 }
 
-// NewAuthorizationError creates an authorization error
+// NewAuthorizationError creates an authorization error.
 func NewAuthorizationError(message string) *APIError {
 	return &APIError{
 		Code:    CodeAuthorizationError,
@@ -61,7 +61,7 @@ func NewAuthorizationError(message string) *APIError {
 	}
 }
 
-// NewRateLimitError creates a rate limit error
+// NewRateLimitError creates a rate limit error.
 func NewRateLimitError(message string) *APIError {
 	return &APIError{
 		Code:    CodeRateLimitError,
@@ -69,7 +69,7 @@ func NewRateLimitError(message string) *APIError {
 	}
 }
 
-// NewInternalError creates an internal server error
+// NewInternalError creates an internal server error.
 func NewInternalError(message string) *APIError {
 	return &APIError{
 		Code:    CodeInternalError,
@@ -77,12 +77,12 @@ func NewInternalError(message string) *APIError {
 	}
 }
 
-// ValidationError creates a validation error with details
+// ValidationError creates a validation error with details.
 func ValidationError(message, details string) *APIError {
 	return NewValidationError(message, details)
 }
 
-// InternalError creates an internal error with details
+// InternalError creates an internal error with details.
 func InternalError(message, details string) *APIError {
 	return &APIError{
 		Code:    CodeInternalError,
@@ -91,7 +91,7 @@ func InternalError(message, details string) *APIError {
 	}
 }
 
-// NewServiceUnavailableError creates a service unavailable error
+// NewServiceUnavailableError creates a service unavailable error.
 func NewServiceUnavailableError(message string) *APIError {
 	return &APIError{
 		Code:    CodeServiceUnavailable,
@@ -132,17 +132,17 @@ func (e *APIError) HTTPStatusCode() int {
 // RespondWithError sends a standardized error response
 func RespondWithError(c *gin.Context, apiError *APIError) {
 	statusCode := apiError.HTTPStatusCode()
-	
+
 	// Add request ID to error context if available
 	if requestID, exists := c.Get("request_id"); exists {
 		c.Header("X-Request-ID", requestID.(string))
 	}
-	
+
 	response := ErrorResponse{
 		Success: false,
 		Error:   *apiError,
 	}
-	
+
 	c.JSON(statusCode, response)
 }
 
@@ -152,12 +152,12 @@ func RespondWithSuccess(c *gin.Context, data interface{}) {
 	if requestID, exists := c.Get("request_id"); exists {
 		c.Header("X-Request-ID", requestID.(string))
 	}
-	
+
 	response := SuccessResponse{
 		Success: true,
 		Data:    data,
 	}
-	
+
 	c.JSON(http.StatusOK, response)
 }
 

@@ -1,7 +1,8 @@
-package crypto
+package crypto_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,26 +10,27 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/keyurgolani/DeveloperTools/internal/metrics"
+	"github.com/keyurgolani/DeveloperTools/internal/modules/crypto"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"dev-utilities/internal/metrics"
 )
 
 func setupTestRouter() *gin.Engine {
 	// Clear any existing metrics to avoid duplicate registration
 	prometheus.DefaultRegisterer = prometheus.NewRegistry()
-	
+
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	
-	service := NewCryptoService()
+
+	service := crypto.NewCryptoService()
 	metricsInstance := metrics.New()
-	handler := NewHandler(service, metricsInstance)
-	
+	handler := crypto.NewHandler(service, metricsInstance)
+
 	v1 := router.Group("/api/v1")
 	handler.RegisterRoutes(v1)
-	
+
 	return router
 }
 
@@ -37,14 +39,14 @@ func TestHandler_Hash(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		request        HashRequest
+		request        crypto.HashRequest
 		expectedStatus int
 		expectSuccess  bool
 		expectedHash   string
 	}{
 		{
 			name: "Valid SHA256 hash request",
-			request: HashRequest{
+			request: crypto.HashRequest{
 				Content:   "hello world",
 				Algorithm: "sha256",
 			},
@@ -54,7 +56,7 @@ func TestHandler_Hash(t *testing.T) {
 		},
 		{
 			name: "Valid MD5 hash request",
-			request: HashRequest{
+			request: crypto.HashRequest{
 				Content:   "test",
 				Algorithm: "md5",
 			},
@@ -64,7 +66,7 @@ func TestHandler_Hash(t *testing.T) {
 		},
 		{
 			name: "Invalid algorithm",
-			request: HashRequest{
+			request: crypto.HashRequest{
 				Content:   "test",
 				Algorithm: "invalid",
 			},
@@ -73,7 +75,7 @@ func TestHandler_Hash(t *testing.T) {
 		},
 		{
 			name: "Empty content",
-			request: HashRequest{
+			request: crypto.HashRequest{
 				Content:   "",
 				Algorithm: "sha256",
 			},
@@ -83,35 +85,7 @@ func TestHandler_Hash(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			jsonBody, err := json.Marshal(tt.request)
-			require.NoError(t, err)
-
-			req, err := http.NewRequest("POST", "/api/v1/crypto/hash", bytes.NewBuffer(jsonBody))
-			require.NoError(t, err)
-			req.Header.Set("Content-Type", "application/json")
-
-			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-
-			var response map[string]interface{}
-			err = json.Unmarshal(w.Body.Bytes(), &response)
-			require.NoError(t, err)
-
-			if tt.expectSuccess {
-				assert.True(t, response["success"].(bool))
-				data := response["data"].(map[string]interface{})
-				assert.Equal(t, tt.expectedHash, data["hash"])
-				assert.Equal(t, tt.request.Algorithm, data["algorithm"])
-			} else {
-				// Should have error field
-				assert.Contains(t, response, "error")
-			}
-		})
-	}
+	executeHashTests(t, router, tests)
 }
 
 func TestHandler_Hash_ValidationErrors(t *testing.T) {
@@ -142,7 +116,7 @@ func TestHandler_Hash_ValidationErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req, err := http.NewRequest("POST", "/api/v1/crypto/hash", bytes.NewBufferString(tt.requestBody))
+			req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/crypto/hash", bytes.NewBufferString(tt.requestBody))
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
 
@@ -165,14 +139,14 @@ func TestHandler_HMAC(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		request        HMACRequest
+		request        crypto.HMACRequest
 		expectedStatus int
 		expectSuccess  bool
 		expectedHMAC   string
 	}{
 		{
 			name: "Valid HMAC-SHA256 request",
-			request: HMACRequest{
+			request: crypto.HMACRequest{
 				Content:   "what do ya want for nothing?",
 				Key:       "Jefe",
 				Algorithm: "sha256",
@@ -183,7 +157,7 @@ func TestHandler_HMAC(t *testing.T) {
 		},
 		{
 			name: "Valid HMAC-SHA512 request",
-			request: HMACRequest{
+			request: crypto.HMACRequest{
 				Content:   "Hi There",
 				Key:       "\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b",
 				Algorithm: "sha512",
@@ -194,7 +168,7 @@ func TestHandler_HMAC(t *testing.T) {
 		},
 		{
 			name: "Invalid algorithm",
-			request: HMACRequest{
+			request: crypto.HMACRequest{
 				Content:   "test",
 				Key:       "key",
 				Algorithm: "md5",
@@ -204,7 +178,7 @@ func TestHandler_HMAC(t *testing.T) {
 		},
 		{
 			name: "Empty content",
-			request: HMACRequest{
+			request: crypto.HMACRequest{
 				Content:   "",
 				Key:       "key",
 				Algorithm: "sha256",
@@ -215,35 +189,7 @@ func TestHandler_HMAC(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			jsonBody, err := json.Marshal(tt.request)
-			require.NoError(t, err)
-
-			req, err := http.NewRequest("POST", "/api/v1/crypto/hmac", bytes.NewBuffer(jsonBody))
-			require.NoError(t, err)
-			req.Header.Set("Content-Type", "application/json")
-
-			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-
-			var response map[string]interface{}
-			err = json.Unmarshal(w.Body.Bytes(), &response)
-			require.NoError(t, err)
-
-			if tt.expectSuccess {
-				assert.True(t, response["success"].(bool))
-				data := response["data"].(map[string]interface{})
-				assert.Equal(t, tt.expectedHMAC, data["hmac"])
-				assert.Equal(t, tt.request.Algorithm, data["algorithm"])
-			} else {
-				// Should have error field
-				assert.Contains(t, response, "error")
-			}
-		})
-	}
+	executeHMACTests(t, router, tests)
 }
 
 func TestHandler_HMAC_ValidationErrors(t *testing.T) {
@@ -270,7 +216,7 @@ func TestHandler_HMAC_ValidationErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req, err := http.NewRequest("POST", "/api/v1/crypto/hmac", bytes.NewBufferString(tt.requestBody))
+			req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/crypto/hmac", bytes.NewBufferString(tt.requestBody))
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
 
@@ -290,16 +236,30 @@ func TestHandler_HMAC_ValidationErrors(t *testing.T) {
 
 func TestHandler_PasswordHash(t *testing.T) {
 	router := setupTestRouter()
+	tests := getPasswordHashTestCases()
 
-	tests := []struct {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			executePasswordHashTest(t, router, tt)
+		})
+	}
+}
+
+func getPasswordHashTestCases() []struct {
+	name           string
+	request        crypto.PasswordHashRequest
+	expectedStatus int
+	expectSuccess  bool
+} {
+	return []struct {
 		name           string
-		request        PasswordHashRequest
+		request        crypto.PasswordHashRequest
 		expectedStatus int
 		expectSuccess  bool
 	}{
 		{
 			name: "Valid password hash request",
-			request: PasswordHashRequest{
+			request: crypto.PasswordHashRequest{
 				Password: "testpassword123",
 			},
 			expectedStatus: http.StatusOK,
@@ -307,7 +267,7 @@ func TestHandler_PasswordHash(t *testing.T) {
 		},
 		{
 			name: "Empty password",
-			request: PasswordHashRequest{
+			request: crypto.PasswordHashRequest{
 				Password: "",
 			},
 			expectedStatus: http.StatusOK,
@@ -315,7 +275,7 @@ func TestHandler_PasswordHash(t *testing.T) {
 		},
 		{
 			name: "Unicode password",
-			request: PasswordHashRequest{
+			request: crypto.PasswordHashRequest{
 				Password: "пароль123🔒",
 			},
 			expectedStatus: http.StatusOK,
@@ -323,57 +283,72 @@ func TestHandler_PasswordHash(t *testing.T) {
 		},
 		{
 			name: "Long password",
-			request: PasswordHashRequest{
+			request: crypto.PasswordHashRequest{
 				Password: strings.Repeat("a", 1000),
 			},
 			expectedStatus: http.StatusOK,
 			expectSuccess:  true,
 		},
 	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			jsonBody, err := json.Marshal(tt.request)
-			require.NoError(t, err)
+func executePasswordHashTest(t *testing.T, router *gin.Engine, tt struct {
+	name           string
+	request        crypto.PasswordHashRequest
+	expectedStatus int
+	expectSuccess  bool
+}) {
+	jsonBody, err := json.Marshal(tt.request)
+	require.NoError(t, err)
 
-			req, err := http.NewRequest("POST", "/api/v1/crypto/password/hash", bytes.NewBuffer(jsonBody))
-			require.NoError(t, err)
-			req.Header.Set("Content-Type", "application/json")
+	req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/crypto/password/hash", bytes.NewBuffer(jsonBody))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
 
-			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
 
-			assert.Equal(t, tt.expectedStatus, w.Code)
+	assert.Equal(t, tt.expectedStatus, w.Code)
+	verifyPasswordHashResponse(t, w, tt.expectSuccess)
+}
 
-			var response map[string]interface{}
-			err = json.Unmarshal(w.Body.Bytes(), &response)
-			require.NoError(t, err)
+func verifyPasswordHashResponse(t *testing.T, w *httptest.ResponseRecorder, expectSuccess bool) {
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
 
-			if tt.expectSuccess {
-				assert.True(t, response["success"].(bool))
-				data := response["data"].(map[string]interface{})
-				hash := data["hash"].(string)
-				assert.NotEmpty(t, hash)
-				assert.True(t, strings.HasPrefix(hash, "$argon2id$v=19$"))
-			} else {
-				assert.Contains(t, response, "error")
-			}
-		})
+	if expectSuccess {
+		assert.True(t, response["success"].(bool))
+		data := response["data"].(map[string]interface{})
+		hash := data["hash"].(string)
+		assert.NotEmpty(t, hash)
+		assert.True(t, strings.HasPrefix(hash, "$argon2id$v=19$"))
+	} else {
+		assert.Contains(t, response, "error")
 	}
 }
 
 func TestHandler_PasswordVerify(t *testing.T) {
 	router := setupTestRouter()
+	validHash := generateValidHashForTesting(t, router)
+	tests := getPasswordVerifyTestCases(validHash)
 
-	// First, hash a password to get a valid hash
-	hashRequest := PasswordHashRequest{
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			executePasswordVerifyTest(t, router, tt)
+		})
+	}
+}
+
+func generateValidHashForTesting(t *testing.T, router *gin.Engine) string {
+	hashRequest := crypto.PasswordHashRequest{
 		Password: "testpassword123",
 	}
-	
+
 	jsonBody, err := json.Marshal(hashRequest)
 	require.NoError(t, err)
 
-	req, err := http.NewRequest("POST", "/api/v1/crypto/password/hash", bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/crypto/password/hash", bytes.NewBuffer(jsonBody))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -387,19 +362,26 @@ func TestHandler_PasswordVerify(t *testing.T) {
 	require.NoError(t, err)
 
 	data := hashResponse["data"].(map[string]interface{})
-	validHash := data["hash"].(string)
+	return data["hash"].(string)
+}
 
-	// Now test verification
-	tests := []struct {
+func getPasswordVerifyTestCases(validHash string) []struct {
+	name           string
+	request        crypto.PasswordVerifyRequest
+	expectedStatus int
+	expectSuccess  bool
+	expectedValid  bool
+} {
+	return []struct {
 		name           string
-		request        PasswordVerifyRequest
+		request        crypto.PasswordVerifyRequest
 		expectedStatus int
 		expectSuccess  bool
 		expectedValid  bool
 	}{
 		{
 			name: "Valid password verification",
-			request: PasswordVerifyRequest{
+			request: crypto.PasswordVerifyRequest{
 				Password: "testpassword123",
 				Hash:     validHash,
 			},
@@ -409,7 +391,7 @@ func TestHandler_PasswordVerify(t *testing.T) {
 		},
 		{
 			name: "Invalid password verification",
-			request: PasswordVerifyRequest{
+			request: crypto.PasswordVerifyRequest{
 				Password: "wrongpassword",
 				Hash:     validHash,
 			},
@@ -419,7 +401,7 @@ func TestHandler_PasswordVerify(t *testing.T) {
 		},
 		{
 			name: "Invalid hash format",
-			request: PasswordVerifyRequest{
+			request: crypto.PasswordVerifyRequest{
 				Password: "testpassword123",
 				Hash:     "invalid_hash",
 			},
@@ -429,7 +411,7 @@ func TestHandler_PasswordVerify(t *testing.T) {
 		},
 		{
 			name: "Empty password with valid hash",
-			request: PasswordVerifyRequest{
+			request: crypto.PasswordVerifyRequest{
 				Password: "",
 				Hash:     validHash,
 			},
@@ -438,33 +420,40 @@ func TestHandler_PasswordVerify(t *testing.T) {
 			expectedValid:  false,
 		},
 	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			jsonBody, err := json.Marshal(tt.request)
-			require.NoError(t, err)
+func executePasswordVerifyTest(t *testing.T, router *gin.Engine, tt struct {
+	name           string
+	request        crypto.PasswordVerifyRequest
+	expectedStatus int
+	expectSuccess  bool
+	expectedValid  bool
+}) {
+	jsonBody, err := json.Marshal(tt.request)
+	require.NoError(t, err)
 
-			req, err := http.NewRequest("POST", "/api/v1/crypto/password/verify", bytes.NewBuffer(jsonBody))
-			require.NoError(t, err)
-			req.Header.Set("Content-Type", "application/json")
+	req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/crypto/password/verify", bytes.NewBuffer(jsonBody))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
 
-			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
 
-			assert.Equal(t, tt.expectedStatus, w.Code)
+	assert.Equal(t, tt.expectedStatus, w.Code)
+	verifyPasswordVerifyResponse(t, w, tt.expectSuccess, tt.expectedValid)
+}
 
-			var response map[string]interface{}
-			err = json.Unmarshal(w.Body.Bytes(), &response)
-			require.NoError(t, err)
+func verifyPasswordVerifyResponse(t *testing.T, w *httptest.ResponseRecorder, expectSuccess bool, expectedValid bool) {
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
 
-			if tt.expectSuccess {
-				assert.True(t, response["success"].(bool))
-				data := response["data"].(map[string]interface{})
-				assert.Equal(t, tt.expectedValid, data["valid"].(bool))
-			} else {
-				assert.Contains(t, response, "error")
-			}
-		})
+	if expectSuccess {
+		assert.True(t, response["success"].(bool))
+		data := response["data"].(map[string]interface{})
+		assert.Equal(t, expectedValid, data["valid"].(bool))
+	} else {
+		assert.Contains(t, response, "error")
 	}
 }
 
@@ -492,7 +481,7 @@ func TestHandler_Password_ValidationErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req, err := http.NewRequest("POST", tt.endpoint, bytes.NewBufferString(tt.requestBody))
+			req, err := http.NewRequestWithContext(context.Background(), "POST", tt.endpoint, bytes.NewBufferString(tt.requestBody))
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
 
@@ -512,8 +501,17 @@ func TestHandler_Password_ValidationErrors(t *testing.T) {
 
 func TestHandler_DecodeCertificate(t *testing.T) {
 	router := setupTestRouter()
+	tests := getDecodeCertificateTestCases()
 
-	validCert := `-----BEGIN CERTIFICATE-----
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			executeDecodeCertificateTest(t, router, tt)
+		})
+	}
+}
+
+func getValidTestCertificate() string {
+	return `-----BEGIN CERTIFICATE-----
 MIIDJjCCAg4CCQD+EO1siPH5GTANBgkqhkiG9w0BAQsFADBVMQswCQYDVQQGEwJV
 UzENMAsGA1UECAwEVGVzdDENMAsGA1UEBwwEVGVzdDENMAsGA1UECgwEVGVzdDEZ
 MBcGA1UEAwwQdGVzdC5leGFtcGxlLmNvbTAeFw0yNTA5MjAxOTMxNTNaFw0yNjA5
@@ -532,38 +530,53 @@ UdVm4QRSOpcTGcjCWriu6IBKXaYoJkbyts2C6TSAAdnz/LoNAIxl+j0r93OQS4Su
 bm1nEqtJZCN/WZA4K2YIi0xboI1oMRbUIIYgmqhR5+qGRpO32Roa/8XuXw5o1ftn
 nU4ZU3j43ohhFR96ZjnvIZ/5eYr/L0ZlexDZ8gpGXsaV+RLF5DxGTOFp
 -----END CERTIFICATE-----`
+}
 
-	tests := []struct {
+func getValidCertificateTestCases() []struct {
+	name           string
+	request        crypto.CertificateDecodeRequest
+	expectedStatus int
+	expectSuccess  bool
+	checkResponse  func(*testing.T, map[string]interface{})
+} {
+	validCert := getValidTestCertificate()
+
+	return []struct {
 		name           string
-		request        CertificateDecodeRequest
+		request        crypto.CertificateDecodeRequest
 		expectedStatus int
 		expectSuccess  bool
 		checkResponse  func(*testing.T, map[string]interface{})
 	}{
 		{
 			name: "Valid certificate",
-			request: CertificateDecodeRequest{
+			request: crypto.CertificateDecodeRequest{
 				Certificate: validCert,
 			},
 			expectedStatus: http.StatusOK,
 			expectSuccess:  true,
-			checkResponse: func(t *testing.T, response map[string]interface{}) {
-				data := response["data"].(map[string]interface{})
-				cert := data["certificate"].(map[string]interface{})
-				
-				assert.NotEmpty(t, cert["subject"])
-				assert.NotEmpty(t, cert["issuer"])
-				assert.NotEmpty(t, cert["serialNumber"])
-				assert.NotEmpty(t, cert["notBefore"])
-				assert.NotEmpty(t, cert["notAfter"])
-				assert.Equal(t, float64(1), cert["version"]) // JSON numbers are float64
-				assert.Contains(t, cert, "keyUsage")
-				// dnsNames may be omitted if empty due to omitempty tag
-			},
+			checkResponse:  validateCertificateResponse,
 		},
+	}
+}
+
+func getInvalidCertificateTestCases() []struct {
+	name           string
+	request        crypto.CertificateDecodeRequest
+	expectedStatus int
+	expectSuccess  bool
+	checkResponse  func(*testing.T, map[string]interface{})
+} {
+	return []struct {
+		name           string
+		request        crypto.CertificateDecodeRequest
+		expectedStatus int
+		expectSuccess  bool
+		checkResponse  func(*testing.T, map[string]interface{})
+	}{
 		{
 			name: "Invalid PEM format",
-			request: CertificateDecodeRequest{
+			request: crypto.CertificateDecodeRequest{
 				Certificate: "not a certificate",
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -571,7 +584,7 @@ nU4ZU3j43ohhFR96ZjnvIZ/5eYr/L0ZlexDZ8gpGXsaV+RLF5DxGTOFp
 		},
 		{
 			name: "Empty certificate",
-			request: CertificateDecodeRequest{
+			request: crypto.CertificateDecodeRequest{
 				Certificate: "",
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -579,7 +592,7 @@ nU4ZU3j43ohhFR96ZjnvIZ/5eYr/L0ZlexDZ8gpGXsaV+RLF5DxGTOFp
 		},
 		{
 			name: "Wrong PEM type",
-			request: CertificateDecodeRequest{
+			request: crypto.CertificateDecodeRequest{
 				Certificate: `-----BEGIN PRIVATE KEY-----
 MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC64TFWKUZxYiNl
 -----END PRIVATE KEY-----`,
@@ -589,7 +602,7 @@ MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC64TFWKUZxYiNl
 		},
 		{
 			name: "Malformed certificate data",
-			request: CertificateDecodeRequest{
+			request: crypto.CertificateDecodeRequest{
 				Certificate: `-----BEGIN CERTIFICATE-----
 invalid base64 data!
 -----END CERTIFICATE-----`,
@@ -598,34 +611,76 @@ invalid base64 data!
 			expectSuccess:  false,
 		},
 	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			jsonBody, err := json.Marshal(tt.request)
-			require.NoError(t, err)
+func getDecodeCertificateTestCases() []struct {
+	name           string
+	request        crypto.CertificateDecodeRequest
+	expectedStatus int
+	expectSuccess  bool
+	checkResponse  func(*testing.T, map[string]interface{})
+} {
+	var testCases []struct {
+		name           string
+		request        crypto.CertificateDecodeRequest
+		expectedStatus int
+		expectSuccess  bool
+		checkResponse  func(*testing.T, map[string]interface{})
+	}
 
-			req, err := http.NewRequest("POST", "/api/v1/crypto/cert/decode", bytes.NewBuffer(jsonBody))
-			require.NoError(t, err)
-			req.Header.Set("Content-Type", "application/json")
+	testCases = append(testCases, getValidCertificateTestCases()...)
+	testCases = append(testCases, getInvalidCertificateTestCases()...)
 
-			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
+	return testCases
+}
 
-			assert.Equal(t, tt.expectedStatus, w.Code)
+func validateCertificateResponse(t *testing.T, response map[string]interface{}) {
+	data := response["data"].(map[string]interface{})
+	cert := data["certificate"].(map[string]interface{})
 
-			var response map[string]interface{}
-			err = json.Unmarshal(w.Body.Bytes(), &response)
-			require.NoError(t, err)
+	assert.NotEmpty(t, cert["subject"])
+	assert.NotEmpty(t, cert["issuer"])
+	assert.NotEmpty(t, cert["serialNumber"])
+	assert.NotEmpty(t, cert["notBefore"])
+	assert.NotEmpty(t, cert["notAfter"])
+	assert.Equal(t, float64(1), cert["version"]) // JSON numbers are float64
+	assert.Contains(t, cert, "keyUsage")
+	// dnsNames may be omitted if empty due to omitempty tag
+}
 
-			if tt.expectSuccess {
-				assert.True(t, response["success"].(bool))
-				if tt.checkResponse != nil {
-					tt.checkResponse(t, response)
-				}
-			} else {
-				assert.Contains(t, response, "error")
-			}
-		})
+func executeDecodeCertificateTest(t *testing.T, router *gin.Engine, tt struct {
+	name           string
+	request        crypto.CertificateDecodeRequest
+	expectedStatus int
+	expectSuccess  bool
+	checkResponse  func(*testing.T, map[string]interface{})
+}) {
+	jsonBody, err := json.Marshal(tt.request)
+	require.NoError(t, err)
+
+	req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/crypto/cert/decode", bytes.NewBuffer(jsonBody))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, tt.expectedStatus, w.Code)
+	verifyDecodeCertificateResponse(t, w, tt.expectSuccess, tt.checkResponse)
+}
+
+func verifyDecodeCertificateResponse(t *testing.T, w *httptest.ResponseRecorder, expectSuccess bool, checkResponse func(*testing.T, map[string]interface{})) {
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+
+	if expectSuccess {
+		assert.True(t, response["success"].(bool))
+		if checkResponse != nil {
+			checkResponse(t, response)
+		}
+	} else {
+		assert.Contains(t, response, "error")
 	}
 }
 
@@ -648,7 +703,7 @@ func TestHandler_DecodeCertificate_ValidationErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req, err := http.NewRequest("POST", "/api/v1/crypto/cert/decode", bytes.NewBufferString(tt.requestBody))
+			req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/crypto/cert/decode", bytes.NewBufferString(tt.requestBody))
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
 
@@ -662,6 +717,82 @@ func TestHandler_DecodeCertificate_ValidationErrors(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Contains(t, response, "error")
+		})
+	}
+}
+
+// Helper function to execute hash test cases.
+func executeHashTests(t *testing.T, router *gin.Engine, tests []struct {
+	name           string
+	request        crypto.HashRequest
+	expectedStatus int
+	expectSuccess  bool
+	expectedHash   string
+}) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			jsonBody, err := json.Marshal(tt.request)
+			require.NoError(t, err)
+
+			req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/crypto/hash", bytes.NewBuffer(jsonBody))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+
+			var response map[string]interface{}
+			err = json.Unmarshal(w.Body.Bytes(), &response)
+			require.NoError(t, err)
+
+			if tt.expectSuccess {
+				assert.True(t, response["success"].(bool))
+				data := response["data"].(map[string]interface{})
+				assert.Equal(t, tt.expectedHash, data["hash"])
+				assert.Equal(t, tt.request.Algorithm, data["algorithm"])
+			} else {
+				assert.Contains(t, response, "error")
+			}
+		})
+	}
+}
+
+// Helper function to execute HMAC test cases.
+func executeHMACTests(t *testing.T, router *gin.Engine, tests []struct {
+	name           string
+	request        crypto.HMACRequest
+	expectedStatus int
+	expectSuccess  bool
+	expectedHMAC   string
+}) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			jsonBody, err := json.Marshal(tt.request)
+			require.NoError(t, err)
+
+			req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/crypto/hmac", bytes.NewBuffer(jsonBody))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+
+			var response map[string]interface{}
+			err = json.Unmarshal(w.Body.Bytes(), &response)
+			require.NoError(t, err)
+
+			if tt.expectSuccess {
+				assert.True(t, response["success"].(bool))
+				data := response["data"].(map[string]interface{})
+				assert.Equal(t, tt.expectedHMAC, data["hmac"])
+				assert.Equal(t, tt.request.Algorithm, data["algorithm"])
+			} else {
+				assert.Contains(t, response, "error")
+			}
 		})
 	}
 }

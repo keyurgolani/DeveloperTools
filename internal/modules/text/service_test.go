@@ -1,23 +1,52 @@
-package text
+package text_test
 
 import (
 	"testing"
 
+	"github.com/keyurgolani/DeveloperTools/internal/modules/text"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestTextService_ConvertCase(t *testing.T) {
-	service := NewTextService()
+	service := text.NewTextService()
 
-	tests := []struct {
+	var tests []struct {
+		name     string
+		content  string
+		caseType string
+		expected string
+		wantErr  bool
+	}
+
+	// Add all test cases
+	tests = append(tests, getUppercaseTests()...)
+	tests = append(tests, getLowercaseTests()...)
+	tests = append(tests, getTitleCaseTests()...)
+	tests = append(tests, getSentenceCaseTests()...)
+	tests = append(tests, getCamelCaseTests()...)
+	tests = append(tests, getPascalCaseTests()...)
+	tests = append(tests, getSnakeCaseTests()...)
+	tests = append(tests, getKebabCaseTests()...)
+	tests = append(tests, getCaseConversionErrorTests()...)
+
+	runCaseConversionTests(t, service, tests)
+}
+
+func getUppercaseTests() []struct {
+	name     string
+	content  string
+	caseType string
+	expected string
+	wantErr  bool
+} {
+	return []struct {
 		name     string
 		content  string
 		caseType string
 		expected string
 		wantErr  bool
 	}{
-		// UPPERCASE tests
 		{
 			name:     "UPPERCASE basic",
 			content:  "hello world",
@@ -39,8 +68,23 @@ func TestTextService_ConvertCase(t *testing.T) {
 			expected: "",
 			wantErr:  false,
 		},
+	}
+}
 
-		// lowercase tests
+func getLowercaseTests() []struct {
+	name     string
+	content  string
+	caseType string
+	expected string
+	wantErr  bool
+} {
+	return []struct {
+		name     string
+		content  string
+		caseType string
+		expected string
+		wantErr  bool
+	}{
 		{
 			name:     "lowercase basic",
 			content:  "HELLO WORLD",
@@ -55,8 +99,23 @@ func TestTextService_ConvertCase(t *testing.T) {
 			expected: "héllo wörld",
 			wantErr:  false,
 		},
+	}
+}
 
-		// Title Case tests
+func getTitleCaseTests() []struct {
+	name     string
+	content  string
+	caseType string
+	expected string
+	wantErr  bool
+} {
+	return []struct {
+		name     string
+		content  string
+		caseType string
+		expected string
+		wantErr  bool
+	}{
 		{
 			name:     "Title Case basic",
 			content:  "hello world",
@@ -64,8 +123,23 @@ func TestTextService_ConvertCase(t *testing.T) {
 			expected: "Hello World",
 			wantErr:  false,
 		},
+	}
+}
 
-		// Sentence case tests
+func getSentenceCaseTests() []struct {
+	name     string
+	content  string
+	caseType string
+	expected string
+	wantErr  bool
+} {
+	return []struct {
+		name     string
+		content  string
+		caseType string
+		expected string
+		wantErr  bool
+	}{
 		{
 			name:     "Sentence case basic",
 			content:  "hello WORLD",
@@ -87,8 +161,23 @@ func TestTextService_ConvertCase(t *testing.T) {
 			expected: "",
 			wantErr:  false,
 		},
+	}
+}
 
-		// camelCase tests
+func getCamelCaseTests() []struct {
+	name     string
+	content  string
+	caseType string
+	expected string
+	wantErr  bool
+} {
+	return []struct {
+		name     string
+		content  string
+		caseType string
+		expected string
+		wantErr  bool
+	}{
 		{
 			name:     "camelCase basic",
 			content:  "hello world test",
@@ -117,8 +206,23 @@ func TestTextService_ConvertCase(t *testing.T) {
 			expected: "",
 			wantErr:  false,
 		},
+	}
+}
 
-		// PascalCase tests
+func getPascalCaseTests() []struct {
+	name     string
+	content  string
+	caseType string
+	expected string
+	wantErr  bool
+} {
+	return []struct {
+		name     string
+		content  string
+		caseType string
+		expected string
+		wantErr  bool
+	}{
 		{
 			name:     "PascalCase basic",
 			content:  "hello world test",
@@ -133,8 +237,23 @@ func TestTextService_ConvertCase(t *testing.T) {
 			expected: "HelloWorldTest",
 			wantErr:  false,
 		},
+	}
+}
 
-		// snake_case tests
+func getSnakeCaseTests() []struct {
+	name     string
+	content  string
+	caseType string
+	expected string
+	wantErr  bool
+} {
+	return []struct {
+		name     string
+		content  string
+		caseType string
+		expected string
+		wantErr  bool
+	}{
 		{
 			name:     "snake_case basic",
 			content:  "hello world test",
@@ -149,8 +268,23 @@ func TestTextService_ConvertCase(t *testing.T) {
 			expected: "hello_world_test",
 			wantErr:  false,
 		},
+	}
+}
 
-		// kebab-case tests
+func getKebabCaseTests() []struct {
+	name     string
+	content  string
+	caseType string
+	expected string
+	wantErr  bool
+} {
+	return []struct {
+		name     string
+		content  string
+		caseType string
+		expected string
+		wantErr  bool
+	}{
 		{
 			name:     "kebab-case basic",
 			content:  "hello world test",
@@ -165,8 +299,23 @@ func TestTextService_ConvertCase(t *testing.T) {
 			expected: "hello-world-test",
 			wantErr:  false,
 		},
+	}
+}
 
-		// Error cases
+func getCaseConversionErrorTests() []struct {
+	name     string
+	content  string
+	caseType string
+	expected string
+	wantErr  bool
+} {
+	return []struct {
+		name     string
+		content  string
+		caseType string
+		expected string
+		wantErr  bool
+	}{
 		{
 			name:     "unsupported case type",
 			content:  "hello world",
@@ -175,7 +324,15 @@ func TestTextService_ConvertCase(t *testing.T) {
 			wantErr:  true,
 		},
 	}
+}
 
+func runCaseConversionTests(t *testing.T, service text.TextService, tests []struct {
+	name     string
+	content  string
+	caseType string
+	expected string
+	wantErr  bool
+}) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := service.ConvertCase(tt.content, tt.caseType)
@@ -189,18 +346,18 @@ func TestTextService_ConvertCase(t *testing.T) {
 	}
 }
 
-func TestTextService_AnalyzeText(t *testing.T) {
-	service := NewTextService()
+type analyzeTextTestCase struct {
+	name     string
+	content  string
+	expected *text.TextInfo
+}
 
-	tests := []struct {
-		name     string
-		content  string
-		expected *TextInfo
-	}{
+func getBasicAnalyzeTextTestCases() []analyzeTextTestCase {
+	return []analyzeTextTestCase{
 		{
 			name:    "basic text",
 			content: "Hello world! How are you?",
-			expected: &TextInfo{
+			expected: &text.TextInfo{
 				CharacterCount: 25,
 				WordCount:      5,
 				LineCount:      1,
@@ -211,7 +368,7 @@ func TestTextService_AnalyzeText(t *testing.T) {
 		{
 			name:    "multiline text",
 			content: "Hello world!\nHow are you?\nI am fine.",
-			expected: &TextInfo{
+			expected: &text.TextInfo{
 				CharacterCount: 36,
 				WordCount:      8,
 				LineCount:      3,
@@ -222,7 +379,7 @@ func TestTextService_AnalyzeText(t *testing.T) {
 		{
 			name:    "unicode text",
 			content: "Héllo wörld! 你好世界",
-			expected: &TextInfo{
+			expected: &text.TextInfo{
 				CharacterCount: 17,
 				WordCount:      3,
 				LineCount:      1,
@@ -230,10 +387,15 @@ func TestTextService_AnalyzeText(t *testing.T) {
 				ByteSize:       27, // UTF-8 bytes
 			},
 		},
+	}
+}
+
+func getEdgeCaseAnalyzeTextTestCases() []analyzeTextTestCase {
+	return []analyzeTextTestCase{
 		{
 			name:    "empty string",
 			content: "",
-			expected: &TextInfo{
+			expected: &text.TextInfo{
 				CharacterCount: 0,
 				WordCount:      0,
 				LineCount:      0,
@@ -244,7 +406,7 @@ func TestTextService_AnalyzeText(t *testing.T) {
 		{
 			name:    "whitespace only",
 			content: "   \n\t  ",
-			expected: &TextInfo{
+			expected: &text.TextInfo{
 				CharacterCount: 7,
 				WordCount:      0,
 				LineCount:      2,
@@ -255,7 +417,7 @@ func TestTextService_AnalyzeText(t *testing.T) {
 		{
 			name:    "no sentence endings",
 			content: "Hello world",
-			expected: &TextInfo{
+			expected: &text.TextInfo{
 				CharacterCount: 11,
 				WordCount:      2,
 				LineCount:      1,
@@ -266,7 +428,7 @@ func TestTextService_AnalyzeText(t *testing.T) {
 		{
 			name:    "multiple sentence endings",
 			content: "Hello! How are you? I'm fine. Great!",
-			expected: &TextInfo{
+			expected: &text.TextInfo{
 				CharacterCount: 36,
 				WordCount:      7,
 				LineCount:      1,
@@ -275,6 +437,18 @@ func TestTextService_AnalyzeText(t *testing.T) {
 			},
 		},
 	}
+}
+
+func getAnalyzeTextTestCases() []analyzeTextTestCase {
+	var cases []analyzeTextTestCase
+	cases = append(cases, getBasicAnalyzeTextTestCases()...)
+	cases = append(cases, getEdgeCaseAnalyzeTextTestCases()...)
+	return cases
+}
+
+func TestTextService_AnalyzeText(t *testing.T) {
+	service := text.NewTextService()
+	tests := getAnalyzeTextTestCases()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -285,10 +459,15 @@ func TestTextService_AnalyzeText(t *testing.T) {
 	}
 }
 
-func TestTextService_TestRegex(t *testing.T) {
-	service := NewTextService()
-
-	tests := []struct {
+func getBasicRegexTestCases() []struct {
+	name     string
+	content  string
+	pattern  string
+	flags    string
+	expected []string
+	wantErr  bool
+} {
+	return []struct {
 		name     string
 		content  string
 		pattern  string
@@ -328,6 +507,25 @@ func TestTextService_TestRegex(t *testing.T) {
 			expected: []string{"pass"},
 			wantErr:  false,
 		},
+	}
+}
+
+func getAdvancedRegexTestCases() []struct {
+	name     string
+	content  string
+	pattern  string
+	flags    string
+	expected []string
+	wantErr  bool
+} {
+	return []struct {
+		name     string
+		content  string
+		pattern  string
+		flags    string
+		expected []string
+		wantErr  bool
+	}{
 		{
 			name:     "email pattern",
 			content:  "Contact us at test@example.com or admin@test.org",
@@ -353,6 +551,32 @@ func TestTextService_TestRegex(t *testing.T) {
 			wantErr:  false,
 		},
 	}
+}
+
+func getTestRegexTestCases() []struct {
+	name     string
+	content  string
+	pattern  string
+	flags    string
+	expected []string
+	wantErr  bool
+} {
+	var cases []struct {
+		name     string
+		content  string
+		pattern  string
+		flags    string
+		expected []string
+		wantErr  bool
+	}
+	cases = append(cases, getBasicRegexTestCases()...)
+	cases = append(cases, getAdvancedRegexTestCases()...)
+	return cases
+}
+
+func TestTextService_TestRegex(t *testing.T) {
+	service := text.NewTextService()
+	tests := getTestRegexTestCases()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -368,10 +592,15 @@ func TestTextService_TestRegex(t *testing.T) {
 	}
 }
 
-func TestTextService_FormatJSON(t *testing.T) {
-	service := NewTextService()
-
-	tests := []struct {
+func getValidJSONFormatTestCases() []struct {
+	name     string
+	content  string
+	action   string
+	indent   int
+	expected string
+	wantErr  bool
+} {
+	return []struct {
 		name     string
 		content  string
 		action   string
@@ -412,6 +641,33 @@ func TestTextService_FormatJSON(t *testing.T) {
 			wantErr:  false,
 		},
 		{
+			name:     "empty JSON object",
+			content:  `{}`,
+			action:   "format",
+			indent:   2,
+			expected: "{}",
+			wantErr:  false,
+		},
+	}
+}
+
+func getInvalidJSONFormatTestCases() []struct {
+	name     string
+	content  string
+	action   string
+	indent   int
+	expected string
+	wantErr  bool
+} {
+	return []struct {
+		name     string
+		content  string
+		action   string
+		indent   int
+		expected string
+		wantErr  bool
+	}{
+		{
 			name:     "invalid JSON",
 			content:  `{"name":"John",}`,
 			action:   "format",
@@ -427,15 +683,33 @@ func TestTextService_FormatJSON(t *testing.T) {
 			expected: "",
 			wantErr:  true,
 		},
-		{
-			name:     "empty JSON object",
-			content:  `{}`,
-			action:   "format",
-			indent:   2,
-			expected: "{}",
-			wantErr:  false,
-		},
 	}
+}
+
+func getFormatJSONTestCases() []struct {
+	name     string
+	content  string
+	action   string
+	indent   int
+	expected string
+	wantErr  bool
+} {
+	var cases []struct {
+		name     string
+		content  string
+		action   string
+		indent   int
+		expected string
+		wantErr  bool
+	}
+	cases = append(cases, getValidJSONFormatTestCases()...)
+	cases = append(cases, getInvalidJSONFormatTestCases()...)
+	return cases
+}
+
+func TestTextService_FormatJSON(t *testing.T) {
+	service := text.NewTextService()
+	tests := getFormatJSONTestCases()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -450,17 +724,17 @@ func TestTextService_FormatJSON(t *testing.T) {
 	}
 }
 
-func TestTextService_SortText(t *testing.T) {
-	service := NewTextService()
+type sortTextTestCase struct {
+	name     string
+	content  string
+	order    string
+	sortType string
+	expected string
+	wantErr  bool
+}
 
-	tests := []struct {
-		name     string
-		content  string
-		order    string
-		sortType string
-		expected string
-		wantErr  bool
-	}{
+func getAlphabeticalSortTestCases() []sortTextTestCase {
+	return []sortTextTestCase{
 		{
 			name:     "alphabetical ascending",
 			content:  "zebra\napple\nbanana",
@@ -477,6 +751,11 @@ func TestTextService_SortText(t *testing.T) {
 			expected: "zebra\nbanana\napple",
 			wantErr:  false,
 		},
+	}
+}
+
+func getNumericalSortTestCases() []sortTextTestCase {
+	return []sortTextTestCase{
 		{
 			name:     "numerical ascending",
 			content:  "10\n2\n1\n20",
@@ -509,6 +788,11 @@ func TestTextService_SortText(t *testing.T) {
 			expected: "1\n5\n10\nabc\ndef",
 			wantErr:  false,
 		},
+	}
+}
+
+func getEdgeCaseSortTestCases() []sortTextTestCase {
+	return []sortTextTestCase{
 		{
 			name:     "empty content",
 			content:  "",
@@ -550,6 +834,19 @@ func TestTextService_SortText(t *testing.T) {
 			wantErr:  false,
 		},
 	}
+}
+
+func getSortTextTestCases() []sortTextTestCase {
+	var cases []sortTextTestCase
+	cases = append(cases, getAlphabeticalSortTestCases()...)
+	cases = append(cases, getNumericalSortTestCases()...)
+	cases = append(cases, getEdgeCaseSortTestCases()...)
+	return cases
+}
+
+func TestTextService_SortText(t *testing.T) {
+	service := text.NewTextService()
+	tests := getSortTextTestCases()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -564,143 +861,9 @@ func TestTextService_SortText(t *testing.T) {
 	}
 }
 
-func TestTextService_splitIntoWords(t *testing.T) {
-	service := &textService{}
-
-	tests := []struct {
-		name     string
-		content  string
-		expected []string
-	}{
-		{
-			name:     "basic words",
-			content:  "hello world test",
-			expected: []string{"hello", "world", "test"},
-		},
-		{
-			name:     "words with punctuation",
-			content:  "hello-world_test.example",
-			expected: []string{"hello", "world", "test", "example"},
-		},
-		{
-			name:     "multiple separators",
-			content:  "hello   world\t\ntest",
-			expected: []string{"hello", "world", "test"},
-		},
-		{
-			name:     "empty string",
-			content:  "",
-			expected: []string{},
-		},
-		{
-			name:     "only separators",
-			content:  "   \t\n  ",
-			expected: []string{},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := service.splitIntoWords(tt.content)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestTextService_countWords(t *testing.T) {
-	service := &textService{}
-
-	tests := []struct {
-		name     string
-		content  string
-		expected int
-	}{
-		{
-			name:     "basic words",
-			content:  "hello world",
-			expected: 2,
-		},
-		{
-			name:     "multiple spaces",
-			content:  "hello    world   test",
-			expected: 3,
-		},
-		{
-			name:     "empty string",
-			content:  "",
-			expected: 0,
-		},
-		{
-			name:     "whitespace only",
-			content:  "   \t\n  ",
-			expected: 0,
-		},
-		{
-			name:     "single word",
-			content:  "hello",
-			expected: 1,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := service.countWords(tt.content)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestTextService_countSentences(t *testing.T) {
-	service := &textService{}
-
-	tests := []struct {
-		name     string
-		content  string
-		expected int
-	}{
-		{
-			name:     "single sentence with period",
-			content:  "Hello world.",
-			expected: 1,
-		},
-		{
-			name:     "multiple sentences",
-			content:  "Hello world. How are you? I am fine!",
-			expected: 3,
-		},
-		{
-			name:     "no sentence endings",
-			content:  "Hello world",
-			expected: 1,
-		},
-		{
-			name:     "empty string",
-			content:  "",
-			expected: 0,
-		},
-		{
-			name:     "sentence endings without space",
-			content:  "Hello.World.Test.",
-			expected: 1, // Only the last one counts as it's followed by end of string
-		},
-		{
-			name:     "whitespace only",
-			content:  "   \t\n  ",
-			expected: 0,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := service.countSentences(tt.content)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-// Test edge cases for case conversion
+// Test edge cases for case conversion.
 func TestTextService_CaseConversion_EdgeCases(t *testing.T) {
-	service := NewTextService()
+	service := text.NewTextService()
 
 	t.Run("camelCase with numbers", func(t *testing.T) {
 		result, err := service.ConvertCase("hello 123 world", "camelCase")

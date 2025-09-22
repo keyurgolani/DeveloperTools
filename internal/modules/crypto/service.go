@@ -2,9 +2,9 @@ package crypto
 
 import (
 	"crypto/hmac"
-	"crypto/md5"
+	"crypto/md5" // #nosec G501 - MD5 is intentionally provided for utility/compatibility purposes
 	"crypto/rand"
-	"crypto/sha1"
+	"crypto/sha1" // #nosec G505 - SHA1 is intentionally provided for utility/compatibility purposes
 	"crypto/sha256"
 	"crypto/sha512"
 	"crypto/subtle"
@@ -20,7 +20,7 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-// Argon2id configuration constants
+// Argon2id configuration constants.
 const (
 	ArgonMemory      = 64 * 1024 // 64MB
 	ArgonIterations  = 3
@@ -62,10 +62,10 @@ func NewCryptoService() CryptoService {
 func (s *cryptoService) Hash(content string, algorithm string) (string, error) {
 	switch algorithm {
 	case "md5":
-		hash := md5.Sum([]byte(content))
+		hash := md5.Sum([]byte(content)) // #nosec G401 - MD5 is intentionally provided for utility/compatibility purposes
 		return hex.EncodeToString(hash[:]), nil
 	case "sha1":
-		hash := sha1.Sum([]byte(content))
+		hash := sha1.Sum([]byte(content)) // #nosec G401 - SHA1 is intentionally provided for utility/compatibility purposes
 		return hex.EncodeToString(hash[:]), nil
 	case "sha256":
 		hash := sha256.Sum256([]byte(content))
@@ -81,7 +81,7 @@ func (s *cryptoService) Hash(content string, algorithm string) (string, error) {
 // HMAC generates HMAC for the given content and key using the specified algorithm
 func (s *cryptoService) HMAC(content, key, algorithm string) (string, error) {
 	var hashFunc func() hash.Hash
-	
+
 	switch algorithm {
 	case "sha256":
 		hashFunc = sha256.New
@@ -90,10 +90,10 @@ func (s *cryptoService) HMAC(content, key, algorithm string) (string, error) {
 	default:
 		return "", fmt.Errorf("unsupported HMAC algorithm: %s", algorithm)
 	}
-	
+
 	h := hmac.New(hashFunc, []byte(key))
 	h.Write([]byte(content))
-	
+
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
@@ -122,20 +122,53 @@ func (s *cryptoService) HashPassword(password string) (string, error) {
 func (s *cryptoService) VerifyPassword(password, encodedHash string) bool {
 	// Parse the encoded hash
 	salt, hash, params, err := parseArgon2Hash(encodedHash)
-	if err != nil {
-		return false
-	}
 
-	// Additional validation to prevent panics
-	if params == nil || params.parallelism == 0 || params.memory == 0 || params.iterations == 0 || params.keyLength == 0 {
-		return false
+	// To prevent timing attacks, we always perform the hash computation
+	// even if parsing fails, using dummy values
+	var actualSalt []byte
+	var actualHash []byte
+	var actualParams *argon2Params
+	var validHash bool
+
+	if err != nil || params == nil || params.parallelism == 0 || params.memory == 0 || params.iterations == 0 || params.keyLength == 0 {
+		// Use dummy values to maintain constant time
+		actualSalt = make([]byte, ArgonSaltLength)
+		actualHash = make([]byte, ArgonKeyLength)
+		actualParams = &argon2Params{
+			memory:      ArgonMemory,
+			iterations:  ArgonIterations,
+			parallelism: ArgonParallelism,
+			keyLength:   ArgonKeyLength,
+		}
+		validHash = false
+	} else {
+		actualSalt = salt
+		actualHash = hash
+		actualParams = params
+		validHash = true
 	}
 
 	// Generate hash for the provided password using the same parameters
-	otherHash := argon2.IDKey([]byte(password), salt, params.iterations, params.memory, params.parallelism, params.keyLength)
+	otherHash := argon2.IDKey(
+		[]byte(password), actualSalt, actualParams.iterations, actualParams.memory, actualParams.parallelism, actualParams.keyLength,
+	)
 
 	// Use constant-time comparison to prevent timing attacks
-	return subtle.ConstantTimeCompare(hash, otherHash) == 1
+	hashMatches := subtle.ConstantTimeCompare(actualHash, otherHash) == 1
+
+	// Use constant-time selection to return the result
+	// This ensures both branches take the same time
+	validHashInt := subtle.ConstantTimeByteEq(boolToByte(validHash), 1)
+	hashMatchesInt := subtle.ConstantTimeByteEq(boolToByte(hashMatches), 1)
+	return subtle.ConstantTimeSelect(validHashInt, hashMatchesInt, 0) == 1
+}
+
+// boolToByte converts a boolean to a byte for constant-time operations
+func boolToByte(b bool) byte {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 // argon2Params holds the parameters for Argon2id
@@ -168,7 +201,8 @@ func parseArgon2Hash(encodedHash string) (salt, hash []byte, params *argon2Param
 
 	// Parse parameters
 	params = &argon2Params{}
-	if _, err := fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &params.memory, &params.iterations, &params.parallelism); err != nil {
+	_, err = fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &params.memory, &params.iterations, &params.parallelism)
+	if err != nil {
 		return nil, nil, nil, fmt.Errorf("invalid parameters format: %w", err)
 	}
 
@@ -184,7 +218,12 @@ func parseArgon2Hash(encodedHash string) (salt, hash []byte, params *argon2Param
 		return nil, nil, nil, fmt.Errorf("invalid hash encoding: %w", err)
 	}
 
-	params.keyLength = uint32(len(hash))
+	// Validate hash length to prevent overflow
+	hashLen := len(hash)
+	if hashLen < 0 || hashLen > 0xFFFFFFFF {
+		return nil, nil, nil, fmt.Errorf("invalid hash length: %d", hashLen)
+	}
+	params.keyLength = uint32(hashLen) // #nosec G115 - length validated above
 
 	return salt, hash, params, nil
 }
@@ -235,6 +274,15 @@ func (s *cryptoService) DecodeCertificate(pemData string) (*CertificateInfo, err
 func extractKeyUsage(cert *x509.Certificate) []string {
 	usage := make([]string, 0)
 
+	usage = append(usage, extractBasicKeyUsage(cert)...)
+	usage = append(usage, extractExtendedKeyUsage(cert)...)
+
+	return usage
+}
+
+func extractBasicKeyUsage(cert *x509.Certificate) []string {
+	usage := make([]string, 0)
+
 	if cert.KeyUsage&x509.KeyUsageDigitalSignature != 0 {
 		usage = append(usage, "Digital Signature")
 	}
@@ -263,7 +311,12 @@ func extractKeyUsage(cert *x509.Certificate) []string {
 		usage = append(usage, "Decipher Only")
 	}
 
-	// Add extended key usage
+	return usage
+}
+
+func extractExtendedKeyUsage(cert *x509.Certificate) []string {
+	usage := make([]string, 0)
+
 	for _, eku := range cert.ExtKeyUsage {
 		switch eku {
 		case x509.ExtKeyUsageServerAuth:

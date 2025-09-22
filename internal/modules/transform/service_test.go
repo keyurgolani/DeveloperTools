@@ -1,9 +1,11 @@
-package transform
+package transform_test
 
 import (
 	"encoding/base64"
 	"strings"
 	"testing"
+
+	. "github.com/keyurgolani/DeveloperTools/internal/modules/transform"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -66,8 +68,31 @@ func TestTransformService_Base64Encode(t *testing.T) {
 
 func TestTransformService_Base64Decode(t *testing.T) {
 	service := NewTransformService()
+	tests := getBase64DecodeTestCases()
 
-	tests := []struct {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := service.Base64Decode(tt.content, tt.urlSafe)
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "invalid base64 input")
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expected, result)
+			}
+		})
+	}
+}
+
+// getBase64DecodeTestCases returns test cases for Base64 decode testing.
+func getBase64DecodeTestCases() []struct { //nolint:funlen // test data structure
+	name     string
+	content  string
+	urlSafe  bool
+	expected string
+	wantErr  bool
+} {
+	return []struct {
 		name     string
 		content  string
 		urlSafe  bool
@@ -123,19 +148,6 @@ func TestTransformService_Base64Decode(t *testing.T) {
 			expected: "Hello 世界",
 			wantErr:  false,
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := service.Base64Decode(tt.content, tt.urlSafe)
-			if tt.wantErr {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "invalid base64 input")
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expected, result)
-			}
-		})
 	}
 }
 
@@ -245,11 +257,43 @@ func TestTransformService_URLDecode(t *testing.T) {
 
 func TestTransformService_DecodeJWT(t *testing.T) {
 	service := NewTransformService()
+	validToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c" // #nosec G101 - test token only //nolint:lll
+	tests := getJWTDecodeTestCases(validToken)
 
-	// Valid JWT token (header.payload.signature)
-	validToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := service.DecodeJWT(tt.token)
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errMsg)
+				assert.Nil(t, result)
+			} else {
+				assert.NoError(t, err)
+				require.NotNil(t, result)
+				assert.False(t, result.SignatureVerified)
+				assert.NotNil(t, result.Header)
+				assert.NotNil(t, result.Payload)
 
-	tests := []struct {
+				// Check expected values for valid token
+				if tt.token == validToken {
+					assert.Equal(t, "HS256", result.Header["alg"])
+					assert.Equal(t, "JWT", result.Header["typ"])
+					assert.Equal(t, "1234567890", result.Payload["sub"])
+					assert.Equal(t, "John Doe", result.Payload["name"])
+				}
+			}
+		})
+	}
+}
+
+// getJWTDecodeTestCases returns test cases for JWT decode testing.
+func getJWTDecodeTestCases(validToken string) []struct {
+	name    string
+	token   string
+	wantErr bool
+	errMsg  string
+} {
+	return []struct {
 		name    string
 		token   string
 		wantErr bool
@@ -297,39 +341,42 @@ func TestTransformService_DecodeJWT(t *testing.T) {
 			errMsg:  "invalid JWT payload JSON",
 		},
 	}
+}
+
+func TestTransformService_Compress(t *testing.T) {
+	service := NewTransformService()
+	tests := getCompressionTestCases()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := service.DecodeJWT(tt.token)
+			result, err := service.Compress(tt.content, tt.algorithm, tt.action)
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errMsg)
-				assert.Nil(t, result)
+				assert.Empty(t, result)
 			} else {
 				assert.NoError(t, err)
-				require.NotNil(t, result)
-				assert.False(t, result.SignatureVerified)
-				assert.NotNil(t, result.Header)
-				assert.NotNil(t, result.Payload)
-				
-				// Check expected values for valid token
-				if tt.token == validToken {
-					assert.Equal(t, "HS256", result.Header["alg"])
-					assert.Equal(t, "JWT", result.Header["typ"])
-					assert.Equal(t, "1234567890", result.Payload["sub"])
-					assert.Equal(t, "John Doe", result.Payload["name"])
-				}
+				assert.NotEmpty(t, result)
+
+				// Verify it's valid base64
+				_, err := base64.StdEncoding.DecodeString(result)
+				assert.NoError(t, err, "Result should be valid base64")
 			}
 		})
 	}
 }
 
-func TestTransformService_Compress(t *testing.T) {
-	service := NewTransformService()
-
+// getCompressionTestCases returns test cases for compression testing.
+func getCompressionTestCases() []struct {
+	name      string
+	content   string
+	algorithm string
+	action    string
+	wantErr   bool
+	errMsg    string
+} {
 	testContent := "Hello, World! This is a test string for compression."
-
-	tests := []struct {
+	return []struct {
 		name      string
 		content   string
 		algorithm string
@@ -375,24 +422,6 @@ func TestTransformService_Compress(t *testing.T) {
 			wantErr:   true,
 			errMsg:    "input too large",
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := service.Compress(tt.content, tt.algorithm, tt.action)
-			if tt.wantErr {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.errMsg)
-				assert.Empty(t, result)
-			} else {
-				assert.NoError(t, err)
-				assert.NotEmpty(t, result)
-				
-				// Verify it's valid base64
-				_, err := base64.StdEncoding.DecodeString(result)
-				assert.NoError(t, err, "Result should be valid base64")
-			}
-		})
 	}
 }
 

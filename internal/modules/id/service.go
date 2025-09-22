@@ -8,11 +8,11 @@ import (
 )
 
 const (
-	// MaxUUIDCount is the maximum number of UUIDs that can be generated in a single request
+	// MaxUUIDCount is the maximum number of UUIDs that can be generated in a single request.
 	MaxUUIDCount = 1000
-	// MaxNanoIDCount is the maximum number of Nano IDs that can be generated in a single request
+	// MaxNanoIDCount is the maximum number of Nano IDs that can be generated in a single request.
 	MaxNanoIDCount = 1000
-	// MaxNanoIDSize is the maximum size for a Nano ID
+	// MaxNanoIDSize is the maximum size for a Nano ID.
 	MaxNanoIDSize = 50
 	// DefaultNanoIDSize is the default size for Nano IDs
 	DefaultNanoIDSize = 21
@@ -52,22 +52,22 @@ func (s *Service) GenerateUUID(version, count int) ([]string, error) {
 	}
 
 	uuids := make([]string, count)
-	
+
 	for i := 0; i < count; i++ {
 		var u uuid.UUID
 		var err error
-		
+
 		switch version {
 		case 1:
 			u, err = uuid.NewUUID()
 		case 4:
 			u, err = uuid.NewRandom()
 		}
-		
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate UUID v%d: %w", version, err)
 		}
-		
+
 		uuids[i] = u.String()
 	}
 
@@ -103,7 +103,7 @@ func (s *Service) GenerateNanoID(size, count int) ([]string, error) {
 	}
 
 	ids := make([]string, count)
-	
+
 	for i := 0; i < count; i++ {
 		id := generate()
 		ids[i] = id

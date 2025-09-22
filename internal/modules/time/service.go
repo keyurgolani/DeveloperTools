@@ -8,29 +8,29 @@ import (
 )
 
 const (
-	// Supported time formats
+	// Supported time formats.
 	FormatUnixSeconds      = "unix"
 	FormatUnixMilliseconds = "unix_ms"
 	FormatISO8601          = "iso8601"
 	FormatRFC3339          = "rfc3339"
 	FormatHumanReadable    = "human"
-	
-	// Layout constants for parsing
-	ISO8601Layout     = "2006-01-02T15:04:05Z"
-	RFC3339Layout     = time.RFC3339
-	HumanLayout       = "2006-01-02 15:04:05 UTC"
+
+	// Layout constants for parsing.
+	ISO8601Layout = "2006-01-02T15:04:05Z"
+	RFC3339Layout = time.RFC3339
+	HumanLayout   = "2006-01-02 15:04:05 UTC"
 )
 
-// TimeService defines the interface for time operations
+// TimeService defines the interface for time operations.
 type TimeService interface {
 	ConvertTime(input, inputFormat, outputFormat string) (string, error)
 	GetCurrentTime() (*TimeResponse, error)
 }
 
-// Service implements the TimeService interface
+// Service implements the TimeService interface.
 type Service struct{}
 
-// NewService creates a new time service instance
+// NewService creates a new time service instance.
 func NewService() TimeService {
 	return &Service{}
 }
@@ -93,7 +93,7 @@ func (s *Service) parseTime(input, format string) (time.Time, error) {
 			"2006-01-02T15:04:05.000000Z",
 			"2006-01-02T15:04:05",
 		}
-		
+
 		for _, layout := range layouts {
 			if t, err := time.Parse(layout, input); err == nil {
 				return t.UTC(), nil
@@ -117,7 +117,7 @@ func (s *Service) parseTime(input, format string) (time.Time, error) {
 			"January 2, 2006 15:04:05 UTC",
 			"January 2, 2006 15:04:05",
 		}
-		
+
 		for _, layout := range layouts {
 			if t, err := time.Parse(layout, input); err == nil {
 				return t.UTC(), nil

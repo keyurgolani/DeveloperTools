@@ -1,13 +1,17 @@
-package text
+package text_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/keyurgolani/DeveloperTools/internal/metrics"
+	"github.com/keyurgolani/DeveloperTools/internal/modules/text"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,29 +19,36 @@ import (
 func setupTestRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	
-	service := NewTextService()
-	handler := NewHandler(service, nil) // Pass nil for metrics in tests
-	
+
+	service := text.NewTextService()
+	// Use a new registry for each test to avoid conflicts
+	registry := prometheus.NewRegistry()
+	metricsInstance := metrics.NewWithRegistry(registry)
+	handler := text.NewHandler(service, metricsInstance) // Pass nil for metrics in tests
+
 	api := router.Group("/api/v1")
 	handler.RegisterRoutes(api)
-	
+
 	return router
 }
 
-func TestHandler_ConvertCase(t *testing.T) {
-	router := setupTestRouter()
-
-	tests := []struct {
+func getConvertCaseTestCases() []struct {
+	name           string
+	request        text.CaseConvertRequest
+	expectedStatus int
+	expectedResult string
+	expectError    bool
+} {
+	return []struct {
 		name           string
-		request        CaseConvertRequest
+		request        text.CaseConvertRequest
 		expectedStatus int
 		expectedResult string
 		expectError    bool
 	}{
 		{
 			name: "successful UPPERCASE conversion",
-			request: CaseConvertRequest{
+			request: text.CaseConvertRequest{
 				Content:  "hello world",
 				CaseType: "UPPERCASE",
 			},
@@ -47,7 +58,7 @@ func TestHandler_ConvertCase(t *testing.T) {
 		},
 		{
 			name: "successful camelCase conversion",
-			request: CaseConvertRequest{
+			request: text.CaseConvertRequest{
 				Content:  "hello world test",
 				CaseType: "camelCase",
 			},
@@ -57,7 +68,7 @@ func TestHandler_ConvertCase(t *testing.T) {
 		},
 		{
 			name: "invalid case type",
-			request: CaseConvertRequest{
+			request: text.CaseConvertRequest{
 				Content:  "hello world",
 				CaseType: "invalidCase",
 			},
@@ -66,7 +77,7 @@ func TestHandler_ConvertCase(t *testing.T) {
 		},
 		{
 			name: "empty content",
-			request: CaseConvertRequest{
+			request: text.CaseConvertRequest{
 				Content:  "",
 				CaseType: "UPPERCASE",
 			},
@@ -75,13 +86,18 @@ func TestHandler_ConvertCase(t *testing.T) {
 			expectError:    false,
 		},
 	}
+}
+
+func TestHandler_ConvertCase(t *testing.T) {
+	router := setupTestRouter()
+	tests := getConvertCaseTestCases()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			jsonData, err := json.Marshal(tt.request)
 			require.NoError(t, err)
 
-			req, err := http.NewRequest("POST", "/api/v1/text/case", bytes.NewBuffer(jsonData))
+			req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/text/case", bytes.NewBuffer(jsonData))
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
 
@@ -107,23 +123,27 @@ func TestHandler_ConvertCase(t *testing.T) {
 	}
 }
 
-func TestHandler_AnalyzeText(t *testing.T) {
-	router := setupTestRouter()
-
-	tests := []struct {
+func getAnalyzeTextHandlerTestCases() []struct {
+	name           string
+	request        text.TextAnalyzeRequest
+	expectedStatus int
+	expectedInfo   *text.TextInfo
+	expectError    bool
+} {
+	return []struct {
 		name           string
-		request        TextAnalyzeRequest
+		request        text.TextAnalyzeRequest
 		expectedStatus int
-		expectedInfo   *TextInfo
+		expectedInfo   *text.TextInfo
 		expectError    bool
 	}{
 		{
 			name: "successful text analysis",
-			request: TextAnalyzeRequest{
+			request: text.TextAnalyzeRequest{
 				Content: "Hello world! How are you?",
 			},
 			expectedStatus: http.StatusOK,
-			expectedInfo: &TextInfo{
+			expectedInfo: &text.TextInfo{
 				CharacterCount: 25,
 				WordCount:      5,
 				LineCount:      1,
@@ -134,11 +154,11 @@ func TestHandler_AnalyzeText(t *testing.T) {
 		},
 		{
 			name: "empty content analysis",
-			request: TextAnalyzeRequest{
+			request: text.TextAnalyzeRequest{
 				Content: "",
 			},
 			expectedStatus: http.StatusOK,
-			expectedInfo: &TextInfo{
+			expectedInfo: &text.TextInfo{
 				CharacterCount: 0,
 				WordCount:      0,
 				LineCount:      0,
@@ -149,11 +169,11 @@ func TestHandler_AnalyzeText(t *testing.T) {
 		},
 		{
 			name: "multiline text analysis",
-			request: TextAnalyzeRequest{
+			request: text.TextAnalyzeRequest{
 				Content: "Hello world!\nHow are you?",
 			},
 			expectedStatus: http.StatusOK,
-			expectedInfo: &TextInfo{
+			expectedInfo: &text.TextInfo{
 				CharacterCount: 25,
 				WordCount:      5,
 				LineCount:      2,
@@ -163,13 +183,18 @@ func TestHandler_AnalyzeText(t *testing.T) {
 			expectError: false,
 		},
 	}
+}
+
+func TestHandler_AnalyzeText(t *testing.T) {
+	router := setupTestRouter()
+	tests := getAnalyzeTextHandlerTestCases()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			jsonData, err := json.Marshal(tt.request)
 			require.NoError(t, err)
 
-			req, err := http.NewRequest("POST", "/api/v1/text/info", bytes.NewBuffer(jsonData))
+			req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/text/info", bytes.NewBuffer(jsonData))
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
 
@@ -187,7 +212,7 @@ func TestHandler_AnalyzeText(t *testing.T) {
 			} else {
 				assert.Equal(t, true, response["success"])
 				data := response["data"].(map[string]interface{})
-				
+
 				assert.Equal(t, float64(tt.expectedInfo.CharacterCount), data["characterCount"])
 				assert.Equal(t, float64(tt.expectedInfo.WordCount), data["wordCount"])
 				assert.Equal(t, float64(tt.expectedInfo.LineCount), data["lineCount"])
@@ -198,19 +223,19 @@ func TestHandler_AnalyzeText(t *testing.T) {
 	}
 }
 
-func TestHandler_TestRegex(t *testing.T) {
-	router := setupTestRouter()
+type testRegexHandlerTestCase struct {
+	name            string
+	request         text.RegexTestRequest
+	expectedStatus  int
+	expectedMatches []string
+	expectError     bool
+}
 
-	tests := []struct {
-		name           string
-		request        RegexTestRequest
-		expectedStatus int
-		expectedMatches []string
-		expectError    bool
-	}{
+func getTestRegexHandlerTestCases() []testRegexHandlerTestCase {
+	return []testRegexHandlerTestCase{
 		{
 			name: "successful regex match",
-			request: RegexTestRequest{
+			request: text.RegexTestRequest{
 				Content: "hello world hello",
 				Pattern: "hello",
 				Flags:   "",
@@ -221,7 +246,7 @@ func TestHandler_TestRegex(t *testing.T) {
 		},
 		{
 			name: "no matches",
-			request: RegexTestRequest{
+			request: text.RegexTestRequest{
 				Content: "hello world",
 				Pattern: "xyz",
 				Flags:   "",
@@ -232,7 +257,7 @@ func TestHandler_TestRegex(t *testing.T) {
 		},
 		{
 			name: "invalid regex pattern",
-			request: RegexTestRequest{
+			request: text.RegexTestRequest{
 				Content: "hello world",
 				Pattern: "[invalid",
 				Flags:   "",
@@ -242,7 +267,7 @@ func TestHandler_TestRegex(t *testing.T) {
 		},
 		{
 			name: "digit pattern",
-			request: RegexTestRequest{
+			request: text.RegexTestRequest{
 				Content: "abc123def456",
 				Pattern: `\d+`,
 				Flags:   "",
@@ -252,13 +277,18 @@ func TestHandler_TestRegex(t *testing.T) {
 			expectError:     false,
 		},
 	}
+}
+
+func TestHandler_TestRegex(t *testing.T) {
+	router := setupTestRouter()
+	tests := getTestRegexHandlerTestCases()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			jsonData, err := json.Marshal(tt.request)
 			require.NoError(t, err)
 
-			req, err := http.NewRequest("POST", "/api/v1/text/regex", bytes.NewBuffer(jsonData))
+			req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/text/regex", bytes.NewBuffer(jsonData))
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
 
@@ -276,13 +306,13 @@ func TestHandler_TestRegex(t *testing.T) {
 			} else {
 				assert.Equal(t, true, response["success"])
 				data := response["data"].(map[string]interface{})
-				
+
 				matches := data["matches"].([]interface{})
 				actualMatches := make([]string, len(matches))
 				for i, match := range matches {
 					actualMatches[i] = match.(string)
 				}
-				
+
 				assert.Equal(t, tt.expectedMatches, actualMatches)
 				assert.Equal(t, tt.request.Pattern, data["pattern"])
 			}
@@ -290,19 +320,19 @@ func TestHandler_TestRegex(t *testing.T) {
 	}
 }
 
-func TestHandler_FormatJSON(t *testing.T) {
-	router := setupTestRouter()
+type formatJSONHandlerTestCase struct {
+	name           string
+	request        text.JSONFormatRequest
+	expectedStatus int
+	expectError    bool
+	validateResult func(t *testing.T, result string)
+}
 
-	tests := []struct {
-		name           string
-		request        JSONFormatRequest
-		expectedStatus int
-		expectError    bool
-		validateResult func(t *testing.T, result string)
-	}{
+func getFormatJSONHandlerTestCases() []formatJSONHandlerTestCase {
+	return []formatJSONHandlerTestCase{
 		{
 			name: "successful JSON formatting",
-			request: JSONFormatRequest{
+			request: text.JSONFormatRequest{
 				Content: `{"name":"John","age":30}`,
 				Action:  "format",
 				Indent:  2,
@@ -318,7 +348,7 @@ func TestHandler_FormatJSON(t *testing.T) {
 		},
 		{
 			name: "successful JSON minification",
-			request: JSONFormatRequest{
+			request: text.JSONFormatRequest{
 				Content: "{\n  \"name\": \"John\",\n  \"age\": 30\n}",
 				Action:  "minify",
 				Indent:  0,
@@ -334,7 +364,7 @@ func TestHandler_FormatJSON(t *testing.T) {
 		},
 		{
 			name: "invalid JSON",
-			request: JSONFormatRequest{
+			request: text.JSONFormatRequest{
 				Content: `{"name":"John",}`,
 				Action:  "format",
 				Indent:  2,
@@ -344,7 +374,7 @@ func TestHandler_FormatJSON(t *testing.T) {
 		},
 		{
 			name: "unsupported action",
-			request: JSONFormatRequest{
+			request: text.JSONFormatRequest{
 				Content: `{"name":"John"}`,
 				Action:  "invalid",
 				Indent:  2,
@@ -353,13 +383,18 @@ func TestHandler_FormatJSON(t *testing.T) {
 			expectError:    true,
 		},
 	}
+}
+
+func TestHandler_FormatJSON(t *testing.T) {
+	router := setupTestRouter()
+	tests := getFormatJSONHandlerTestCases()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			jsonData, err := json.Marshal(tt.request)
 			require.NoError(t, err)
 
-			req, err := http.NewRequest("POST", "/api/v1/data/json/format", bytes.NewBuffer(jsonData))
+			req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/data/json/format", bytes.NewBuffer(jsonData))
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
 
@@ -378,7 +413,7 @@ func TestHandler_FormatJSON(t *testing.T) {
 				assert.Equal(t, true, response["success"])
 				data := response["data"].(map[string]interface{})
 				result := data["result"].(string)
-				
+
 				if tt.validateResult != nil {
 					tt.validateResult(t, result)
 				}
@@ -387,19 +422,19 @@ func TestHandler_FormatJSON(t *testing.T) {
 	}
 }
 
-func TestHandler_SortText(t *testing.T) {
-	router := setupTestRouter()
+type sortTextHandlerTestCase struct {
+	name           string
+	request        text.TextSortRequest
+	expectedStatus int
+	expectedResult string
+	expectError    bool
+}
 
-	tests := []struct {
-		name           string
-		request        TextSortRequest
-		expectedStatus int
-		expectedResult string
-		expectError    bool
-	}{
+func getValidSortTextHandlerTestCases() []sortTextHandlerTestCase {
+	return []sortTextHandlerTestCase{
 		{
 			name: "alphabetical ascending sort",
-			request: TextSortRequest{
+			request: text.TextSortRequest{
 				Content:  "zebra\napple\nbanana",
 				Order:    "asc",
 				SortType: "alpha",
@@ -410,7 +445,7 @@ func TestHandler_SortText(t *testing.T) {
 		},
 		{
 			name: "numerical ascending sort",
-			request: TextSortRequest{
+			request: text.TextSortRequest{
 				Content:  "10\n2\n1\n20",
 				Order:    "asc",
 				SortType: "numeric",
@@ -421,7 +456,7 @@ func TestHandler_SortText(t *testing.T) {
 		},
 		{
 			name: "alphabetical descending sort",
-			request: TextSortRequest{
+			request: text.TextSortRequest{
 				Content:  "apple\nbanana\nzebra",
 				Order:    "desc",
 				SortType: "alpha",
@@ -431,28 +466,8 @@ func TestHandler_SortText(t *testing.T) {
 			expectError:    false,
 		},
 		{
-			name: "unsupported order",
-			request: TextSortRequest{
-				Content:  "a\nb\nc",
-				Order:    "invalid",
-				SortType: "alpha",
-			},
-			expectedStatus: http.StatusBadRequest,
-			expectError:    true,
-		},
-		{
-			name: "unsupported sort type",
-			request: TextSortRequest{
-				Content:  "a\nb\nc",
-				Order:    "asc",
-				SortType: "invalid",
-			},
-			expectedStatus: http.StatusBadRequest,
-			expectError:    true,
-		},
-		{
 			name: "empty content",
-			request: TextSortRequest{
+			request: text.TextSortRequest{
 				Content:  "",
 				Order:    "asc",
 				SortType: "alpha",
@@ -462,13 +477,50 @@ func TestHandler_SortText(t *testing.T) {
 			expectError:    false,
 		},
 	}
+}
+
+func getInvalidSortTextHandlerTestCases() []sortTextHandlerTestCase {
+	return []sortTextHandlerTestCase{
+		{
+			name: "unsupported order",
+			request: text.TextSortRequest{
+				Content:  "a\nb\nc",
+				Order:    "invalid",
+				SortType: "alpha",
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectError:    true,
+		},
+		{
+			name: "unsupported sort type",
+			request: text.TextSortRequest{
+				Content:  "a\nb\nc",
+				Order:    "asc",
+				SortType: "invalid",
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectError:    true,
+		},
+	}
+}
+
+func getSortTextHandlerTestCases() []sortTextHandlerTestCase {
+	var cases []sortTextHandlerTestCase
+	cases = append(cases, getValidSortTextHandlerTestCases()...)
+	cases = append(cases, getInvalidSortTextHandlerTestCases()...)
+	return cases
+}
+
+func TestHandler_SortText(t *testing.T) {
+	router := setupTestRouter()
+	tests := getSortTextHandlerTestCases()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			jsonData, err := json.Marshal(tt.request)
 			require.NoError(t, err)
 
-			req, err := http.NewRequest("POST", "/api/v1/text/sort", bytes.NewBuffer(jsonData))
+			req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/text/sort", bytes.NewBuffer(jsonData))
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
 
@@ -519,7 +571,7 @@ func TestHandler_InvalidJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req, err := http.NewRequest("POST", tt.endpoint, bytes.NewBufferString(tt.body))
+			req, err := http.NewRequestWithContext(context.Background(), "POST", tt.endpoint, bytes.NewBufferString(tt.body))
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
 

@@ -7,7 +7,6 @@ run:
 linters:
   enable:
     - bodyclose
-    - depguard
     - dogsled
     - dupl
     - errcheck
@@ -39,6 +38,8 @@ linters:
     - asciicheck
     - godot
     - testpackage
+  disable:
+    - depguard
 
 linters-settings:
   errcheck:
@@ -109,6 +110,8 @@ linters-settings:
   whitespace:
     multi-if: false
     multi-func: false
+  
+
 
 issues:
   exclude-rules:

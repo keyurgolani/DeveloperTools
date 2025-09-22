@@ -3,13 +3,13 @@ package crypto
 import (
 	"net/http"
 
-	"dev-utilities/internal/metrics"
-	"dev-utilities/pkg/apierror"
+	"github.com/keyurgolani/DeveloperTools/internal/metrics"
+	"github.com/keyurgolani/DeveloperTools/pkg/apierror"
 
 	"github.com/gin-gonic/gin"
 )
 
-// handleRequestWithMetrics is a helper function to reduce code duplication
+// handleRequestWithMetrics is a helper function to reduce code duplication.
 func (h *MetricsAwareHandler) handleRequestWithMetrics(
 	c *gin.Context,
 	operation, algorithm string,
@@ -44,13 +44,13 @@ func (h *MetricsAwareHandler) handleRequestWithMetrics(
 	})
 }
 
-// MetricsAwareHandler handles HTTP requests for crypto operations with metrics
+// MetricsAwareHandler handles HTTP requests for crypto operations with metrics.
 type MetricsAwareHandler struct {
 	service CryptoService
 	metrics *metrics.Metrics
 }
 
-// NewMetricsAwareHandler creates a new crypto handler with metrics support
+// NewMetricsAwareHandler creates a new crypto handler with metrics support.
 func NewMetricsAwareHandler(service CryptoService, metrics *metrics.Metrics) *MetricsAwareHandler {
 	return &MetricsAwareHandler{
 		service: service,
@@ -58,7 +58,7 @@ func NewMetricsAwareHandler(service CryptoService, metrics *metrics.Metrics) *Me
 	}
 }
 
-// RegisterRoutes registers crypto routes with the router
+// RegisterRoutes registers crypto routes with the router.
 func (h *MetricsAwareHandler) RegisterRoutes(router *gin.RouterGroup) {
 	crypto := router.Group("/crypto")
 	{
@@ -70,7 +70,7 @@ func (h *MetricsAwareHandler) RegisterRoutes(router *gin.RouterGroup) {
 	}
 }
 
-// Hash handles hash calculation requests with metrics
+// Hash handles hash calculation requests with metrics.
 func (h *MetricsAwareHandler) Hash(c *gin.Context) {
 	var req HashRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -103,7 +103,7 @@ func (h *MetricsAwareHandler) Hash(c *gin.Context) {
 	})
 }
 
-// HMAC handles HMAC generation requests with metrics
+// HMAC handles HMAC generation requests with metrics.
 func (h *MetricsAwareHandler) HMAC(c *gin.Context) {
 	var req HMACRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -136,7 +136,7 @@ func (h *MetricsAwareHandler) HMAC(c *gin.Context) {
 	})
 }
 
-// HashPassword handles password hashing requests with metrics
+// HashPassword handles password hashing requests with metrics.
 func (h *MetricsAwareHandler) HashPassword(c *gin.Context) {
 	var req PasswordHashRequest
 	h.handleRequestWithMetrics(c, "password_hash", "argon2id", &req, func() (interface{}, error) {
@@ -148,7 +148,7 @@ func (h *MetricsAwareHandler) HashPassword(c *gin.Context) {
 	})
 }
 
-// VerifyPassword handles password verification requests with metrics
+// VerifyPassword handles password verification requests with metrics.
 func (h *MetricsAwareHandler) VerifyPassword(c *gin.Context) {
 	var req PasswordVerifyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -174,7 +174,7 @@ func (h *MetricsAwareHandler) VerifyPassword(c *gin.Context) {
 	})
 }
 
-// DecodeCertificate handles certificate decoding requests with metrics
+// DecodeCertificate handles certificate decoding requests with metrics.
 func (h *MetricsAwareHandler) DecodeCertificate(c *gin.Context) {
 	var req CertificateDecodeRequest
 	h.handleRequestWithMetrics(c, "cert_decode", "x509", &req, func() (interface{}, error) {

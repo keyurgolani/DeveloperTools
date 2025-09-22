@@ -1,19 +1,19 @@
 package crypto
 
 import (
-	"dev-utilities/internal/metrics"
-	"dev-utilities/pkg/apierror"
+	"github.com/keyurgolani/DeveloperTools/internal/metrics"
+	"github.com/keyurgolani/DeveloperTools/pkg/apierror"
 
 	"github.com/gin-gonic/gin"
 )
 
-// Handler handles HTTP requests for crypto operations
+// Handler handles HTTP requests for crypto operations.
 type Handler struct {
 	service CryptoService
 	metrics *metrics.Metrics
 }
 
-// NewHandler creates a new crypto handler
+// NewHandler creates a new crypto handler.
 func NewHandler(service CryptoService, metrics *metrics.Metrics) *Handler {
 	return &Handler{
 		service: service,
@@ -21,7 +21,7 @@ func NewHandler(service CryptoService, metrics *metrics.Metrics) *Handler {
 	}
 }
 
-// RegisterRoutes registers crypto routes with the router
+// RegisterRoutes registers crypto routes with the router.
 func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 	crypto := router.Group("/crypto")
 	{
@@ -33,7 +33,7 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 	}
 }
 
-// Hash handles hash calculation requests
+// Hash handles hash calculation requests.
 func (h *Handler) Hash(c *gin.Context) {
 	var req HashRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -67,7 +67,7 @@ func (h *Handler) Hash(c *gin.Context) {
 	apierror.RespondWithSuccess(c, response)
 }
 
-// HMAC handles HMAC generation requests
+// HMAC handles HMAC generation requests.
 func (h *Handler) HMAC(c *gin.Context) {
 	var req HMACRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -101,7 +101,7 @@ func (h *Handler) HMAC(c *gin.Context) {
 	apierror.RespondWithSuccess(c, response)
 }
 
-// HashPassword handles password hashing requests
+// HashPassword handles password hashing requests.
 func (h *Handler) HashPassword(c *gin.Context) {
 	var req PasswordHashRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -134,7 +134,7 @@ func (h *Handler) HashPassword(c *gin.Context) {
 	apierror.RespondWithSuccess(c, response)
 }
 
-// VerifyPassword handles password verification requests
+// VerifyPassword handles password verification requests.
 func (h *Handler) VerifyPassword(c *gin.Context) {
 	var req PasswordVerifyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -163,7 +163,7 @@ func (h *Handler) VerifyPassword(c *gin.Context) {
 	apierror.RespondWithSuccess(c, response)
 }
 
-// DecodeCertificate handles certificate decoding requests
+// DecodeCertificate handles certificate decoding requests.
 func (h *Handler) DecodeCertificate(c *gin.Context) {
 	var req CertificateDecodeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

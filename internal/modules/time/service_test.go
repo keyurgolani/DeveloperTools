@@ -1,22 +1,17 @@
-package time
+package time_test
 
 import (
 	"testing"
-	"time"
+	stdtime "time"
 
+	"github.com/keyurgolani/DeveloperTools/internal/modules/time"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestService_ConvertTime(t *testing.T) {
-	service := NewService()
-
-	// Test time: 2023-12-25 15:30:45 UTC (Unix: 1703518245)
-	testUnixSeconds := "1703518245"
-	testUnixMilliseconds := "1703518245000"
-	testISO8601 := "2023-12-25T15:30:45Z"
-	testRFC3339 := "2023-12-25T15:30:45Z"
-	testHuman := "2023-12-25 15:30:45 UTC"
+	service := time.NewService()
+	testData := getTestTimeData()
 
 	tests := []struct {
 		name         string
@@ -26,176 +21,372 @@ func TestService_ConvertTime(t *testing.T) {
 		expected     string
 		expectError  bool
 		errorMsg     string
+	}{}
+
+	// Add all test cases
+	tests = append(tests, getUnixConversionTests(testData)...)
+	tests = append(tests, getISO8601ConversionTests(testData)...)
+	tests = append(tests, getRFC3339ConversionTests(testData)...)
+	tests = append(tests, getHumanConversionTests(testData)...)
+	tests = append(tests, getSameFormatConversionTests(testData)...)
+	tests = append(tests, getErrorCaseTests(testData)...)
+
+	runConversionTests(t, service, tests)
+}
+
+type testTimeData struct {
+	unixSeconds      string
+	unixMilliseconds string
+	iso8601          string
+	rfc3339          string
+	human            string
+}
+
+func getTestTimeData() testTimeData {
+	return testTimeData{
+		unixSeconds:      "1703518245",
+		unixMilliseconds: "1703518245000",
+		iso8601:          "2023-12-25T15:30:45Z",
+		rfc3339:          "2023-12-25T15:30:45Z",
+		human:            "2023-12-25 15:30:45 UTC",
+	}
+}
+
+func getUnixConversionTests(data testTimeData) []struct {
+	name         string
+	input        string
+	inputFormat  string
+	outputFormat string
+	expected     string
+	expectError  bool
+	errorMsg     string
+} {
+	return []struct {
+		name         string
+		input        string
+		inputFormat  string
+		outputFormat string
+		expected     string
+		expectError  bool
+		errorMsg     string
 	}{
-		// Unix seconds conversions
 		{
 			name:         "Unix to ISO8601",
-			input:        testUnixSeconds,
-			inputFormat:  FormatUnixSeconds,
-			outputFormat: FormatISO8601,
-			expected:     testISO8601,
+			input:        data.unixSeconds,
+			inputFormat:  time.FormatUnixSeconds,
+			outputFormat: time.FormatISO8601,
+			expected:     data.iso8601,
 		},
 		{
 			name:         "Unix to RFC3339",
-			input:        testUnixSeconds,
-			inputFormat:  FormatUnixSeconds,
-			outputFormat: FormatRFC3339,
-			expected:     testRFC3339,
+			input:        data.unixSeconds,
+			inputFormat:  time.FormatUnixSeconds,
+			outputFormat: time.FormatRFC3339,
+			expected:     data.rfc3339,
 		},
 		{
 			name:         "Unix to Human",
-			input:        testUnixSeconds,
-			inputFormat:  FormatUnixSeconds,
-			outputFormat: FormatHumanReadable,
-			expected:     testHuman,
+			input:        data.unixSeconds,
+			inputFormat:  time.FormatUnixSeconds,
+			outputFormat: time.FormatHumanReadable,
+			expected:     data.human,
 		},
 		{
 			name:         "Unix to Unix milliseconds",
-			input:        testUnixSeconds,
-			inputFormat:  FormatUnixSeconds,
-			outputFormat: FormatUnixMilliseconds,
-			expected:     testUnixMilliseconds,
+			input:        data.unixSeconds,
+			inputFormat:  time.FormatUnixSeconds,
+			outputFormat: time.FormatUnixMilliseconds,
+			expected:     data.unixMilliseconds,
 		},
-
-		// Unix milliseconds conversions
 		{
 			name:         "Unix milliseconds to Unix seconds",
-			input:        testUnixMilliseconds,
-			inputFormat:  FormatUnixMilliseconds,
-			outputFormat: FormatUnixSeconds,
-			expected:     testUnixSeconds,
+			input:        data.unixMilliseconds,
+			inputFormat:  time.FormatUnixMilliseconds,
+			outputFormat: time.FormatUnixSeconds,
+			expected:     data.unixSeconds,
 		},
 		{
 			name:         "Unix milliseconds to ISO8601",
-			input:        testUnixMilliseconds,
-			inputFormat:  FormatUnixMilliseconds,
-			outputFormat: FormatISO8601,
-			expected:     testISO8601,
+			input:        data.unixMilliseconds,
+			inputFormat:  time.FormatUnixMilliseconds,
+			outputFormat: time.FormatISO8601,
+			expected:     data.iso8601,
 		},
+	}
+}
 
-		// ISO8601 conversions
+func getISO8601ConversionTests(data testTimeData) []struct {
+	name         string
+	input        string
+	inputFormat  string
+	outputFormat string
+	expected     string
+	expectError  bool
+	errorMsg     string
+} {
+	return []struct {
+		name         string
+		input        string
+		inputFormat  string
+		outputFormat string
+		expected     string
+		expectError  bool
+		errorMsg     string
+	}{
 		{
 			name:         "ISO8601 to Unix",
-			input:        testISO8601,
-			inputFormat:  FormatISO8601,
-			outputFormat: FormatUnixSeconds,
-			expected:     testUnixSeconds,
+			input:        data.iso8601,
+			inputFormat:  time.FormatISO8601,
+			outputFormat: time.FormatUnixSeconds,
+			expected:     data.unixSeconds,
 		},
 		{
 			name:         "ISO8601 to RFC3339",
-			input:        testISO8601,
-			inputFormat:  FormatISO8601,
-			outputFormat: FormatRFC3339,
-			expected:     testRFC3339,
+			input:        data.iso8601,
+			inputFormat:  time.FormatISO8601,
+			outputFormat: time.FormatRFC3339,
+			expected:     data.rfc3339,
 		},
 		{
 			name:         "ISO8601 to Human",
-			input:        testISO8601,
-			inputFormat:  FormatISO8601,
-			outputFormat: FormatHumanReadable,
-			expected:     testHuman,
+			input:        data.iso8601,
+			inputFormat:  time.FormatISO8601,
+			outputFormat: time.FormatHumanReadable,
+			expected:     data.human,
 		},
+	}
+}
 
-		// RFC3339 conversions
+func getRFC3339ConversionTests(data testTimeData) []struct {
+	name         string
+	input        string
+	inputFormat  string
+	outputFormat string
+	expected     string
+	expectError  bool
+	errorMsg     string
+} {
+	return []struct {
+		name         string
+		input        string
+		inputFormat  string
+		outputFormat string
+		expected     string
+		expectError  bool
+		errorMsg     string
+	}{
 		{
 			name:         "RFC3339 to Unix",
-			input:        testRFC3339,
-			inputFormat:  FormatRFC3339,
-			outputFormat: FormatUnixSeconds,
-			expected:     testUnixSeconds,
+			input:        data.rfc3339,
+			inputFormat:  time.FormatRFC3339,
+			outputFormat: time.FormatUnixSeconds,
+			expected:     data.unixSeconds,
 		},
 		{
 			name:         "RFC3339 to ISO8601",
-			input:        testRFC3339,
-			inputFormat:  FormatRFC3339,
-			outputFormat: FormatISO8601,
-			expected:     testISO8601,
+			input:        data.rfc3339,
+			inputFormat:  time.FormatRFC3339,
+			outputFormat: time.FormatISO8601,
+			expected:     data.iso8601,
 		},
+	}
+}
 
-		// Human readable conversions
+func getHumanConversionTests(data testTimeData) []struct {
+	name         string
+	input        string
+	inputFormat  string
+	outputFormat string
+	expected     string
+	expectError  bool
+	errorMsg     string
+} {
+	return []struct {
+		name         string
+		input        string
+		inputFormat  string
+		outputFormat string
+		expected     string
+		expectError  bool
+		errorMsg     string
+	}{
 		{
 			name:         "Human to Unix",
-			input:        testHuman,
-			inputFormat:  FormatHumanReadable,
-			outputFormat: FormatUnixSeconds,
-			expected:     testUnixSeconds,
+			input:        data.human,
+			inputFormat:  time.FormatHumanReadable,
+			outputFormat: time.FormatUnixSeconds,
+			expected:     data.unixSeconds,
 		},
 		{
 			name:         "Human to ISO8601",
-			input:        testHuman,
-			inputFormat:  FormatHumanReadable,
-			outputFormat: FormatISO8601,
-			expected:     testISO8601,
+			input:        data.human,
+			inputFormat:  time.FormatHumanReadable,
+			outputFormat: time.FormatISO8601,
+			expected:     data.iso8601,
 		},
+	}
+}
 
-		// Same format conversions (should work)
+func getSameFormatConversionTests(data testTimeData) []struct {
+	name         string
+	input        string
+	inputFormat  string
+	outputFormat string
+	expected     string
+	expectError  bool
+	errorMsg     string
+} {
+	return []struct {
+		name         string
+		input        string
+		inputFormat  string
+		outputFormat string
+		expected     string
+		expectError  bool
+		errorMsg     string
+	}{
 		{
 			name:         "Unix to Unix (same)",
-			input:        testUnixSeconds,
-			inputFormat:  FormatUnixSeconds,
-			outputFormat: FormatUnixSeconds,
-			expected:     testUnixSeconds,
+			input:        data.unixSeconds,
+			inputFormat:  time.FormatUnixSeconds,
+			outputFormat: time.FormatUnixSeconds,
+			expected:     data.unixSeconds,
 		},
+	}
+}
 
-		// Error cases
+func getErrorCaseTests(data testTimeData) []struct {
+	name         string
+	input        string
+	inputFormat  string
+	outputFormat string
+	expected     string
+	expectError  bool
+	errorMsg     string
+} {
+	var tests []struct {
+		name         string
+		input        string
+		inputFormat  string
+		outputFormat string
+		expected     string
+		expectError  bool
+		errorMsg     string
+	}
+
+	tests = append(tests, getInvalidInputTests()...)
+	tests = append(tests, getUnsupportedFormatTests(data)...)
+
+	return tests
+}
+
+func getInvalidInputTests() []struct {
+	name         string
+	input        string
+	inputFormat  string
+	outputFormat string
+	expected     string
+	expectError  bool
+	errorMsg     string
+} {
+	return []struct {
+		name         string
+		input        string
+		inputFormat  string
+		outputFormat string
+		expected     string
+		expectError  bool
+		errorMsg     string
+	}{
 		{
 			name:         "Invalid Unix timestamp",
 			input:        "invalid",
-			inputFormat:  FormatUnixSeconds,
-			outputFormat: FormatISO8601,
+			inputFormat:  time.FormatUnixSeconds,
+			outputFormat: time.FormatISO8601,
 			expectError:  true,
 			errorMsg:     "invalid unix timestamp",
 		},
 		{
 			name:         "Invalid Unix milliseconds",
 			input:        "invalid",
-			inputFormat:  FormatUnixMilliseconds,
-			outputFormat: FormatISO8601,
+			inputFormat:  time.FormatUnixMilliseconds,
+			outputFormat: time.FormatISO8601,
 			expectError:  true,
 			errorMsg:     "invalid unix milliseconds timestamp",
 		},
 		{
 			name:         "Invalid ISO8601",
 			input:        "2023-13-45T25:70:90Z",
-			inputFormat:  FormatISO8601,
-			outputFormat: FormatUnixSeconds,
+			inputFormat:  time.FormatISO8601,
+			outputFormat: time.FormatUnixSeconds,
 			expectError:  true,
 			errorMsg:     "invalid ISO8601 format",
 		},
 		{
 			name:         "Invalid RFC3339",
 			input:        "invalid-rfc3339",
-			inputFormat:  FormatRFC3339,
-			outputFormat: FormatUnixSeconds,
+			inputFormat:  time.FormatRFC3339,
+			outputFormat: time.FormatUnixSeconds,
 			expectError:  true,
 			errorMsg:     "invalid RFC3339 format",
 		},
 		{
 			name:         "Invalid human format",
 			input:        "not a date",
-			inputFormat:  FormatHumanReadable,
-			outputFormat: FormatUnixSeconds,
+			inputFormat:  time.FormatHumanReadable,
+			outputFormat: time.FormatUnixSeconds,
 			expectError:  true,
 			errorMsg:     "invalid human-readable format",
 		},
+	}
+}
+
+func getUnsupportedFormatTests(data testTimeData) []struct {
+	name         string
+	input        string
+	inputFormat  string
+	outputFormat string
+	expected     string
+	expectError  bool
+	errorMsg     string
+} {
+	return []struct {
+		name         string
+		input        string
+		inputFormat  string
+		outputFormat string
+		expected     string
+		expectError  bool
+		errorMsg     string
+	}{
 		{
 			name:         "Unsupported input format",
-			input:        testUnixSeconds,
+			input:        data.unixSeconds,
 			inputFormat:  "unsupported",
-			outputFormat: FormatISO8601,
+			outputFormat: time.FormatISO8601,
 			expectError:  true,
 			errorMsg:     "unsupported input format",
 		},
 		{
 			name:         "Unsupported output format",
-			input:        testUnixSeconds,
-			inputFormat:  FormatUnixSeconds,
+			input:        data.unixSeconds,
+			inputFormat:  time.FormatUnixSeconds,
 			outputFormat: "unsupported",
 			expectError:  true,
 			errorMsg:     "unsupported output format",
 		},
 	}
+}
 
+func runConversionTests(t *testing.T, service time.TimeService, tests []struct {
+	name         string
+	input        string
+	inputFormat  string
+	outputFormat string
+	expected     string
+	expectError  bool
+	errorMsg     string
+}) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := service.ConvertTime(tt.input, tt.inputFormat, tt.outputFormat)
@@ -214,7 +405,7 @@ func TestService_ConvertTime(t *testing.T) {
 }
 
 func TestService_ConvertTime_VariousISO8601Formats(t *testing.T) {
-	service := NewService()
+	service := time.NewService()
 
 	// Test various ISO8601 input formats
 	iso8601Variants := []string{
@@ -228,7 +419,7 @@ func TestService_ConvertTime_VariousISO8601Formats(t *testing.T) {
 
 	for _, variant := range iso8601Variants {
 		t.Run("ISO8601_variant_"+variant, func(t *testing.T) {
-			result, err := service.ConvertTime(variant, FormatISO8601, FormatUnixSeconds)
+			result, err := service.ConvertTime(variant, time.FormatISO8601, time.FormatUnixSeconds)
 			require.NoError(t, err)
 			assert.Equal(t, expectedUnix, result)
 		})
@@ -236,7 +427,7 @@ func TestService_ConvertTime_VariousISO8601Formats(t *testing.T) {
 }
 
 func TestService_ConvertTime_VariousHumanFormats(t *testing.T) {
-	service := NewService()
+	service := time.NewService()
 
 	// Test various human-readable input formats
 	humanVariants := []struct {
@@ -250,7 +441,7 @@ func TestService_ConvertTime_VariousHumanFormats(t *testing.T) {
 
 	for _, variant := range humanVariants {
 		t.Run("Human_variant_"+variant.input, func(t *testing.T) {
-			result, err := service.ConvertTime(variant.input, FormatHumanReadable, FormatUnixSeconds)
+			result, err := service.ConvertTime(variant.input, time.FormatHumanReadable, time.FormatUnixSeconds)
 			require.NoError(t, err)
 			assert.Equal(t, variant.expected, result)
 		})
@@ -258,17 +449,17 @@ func TestService_ConvertTime_VariousHumanFormats(t *testing.T) {
 }
 
 func TestService_GetCurrentTime(t *testing.T) {
-	service := NewService()
+	service := time.NewService()
 
 	// Record time before the call
-	beforeCall := time.Now().UTC()
-	
+	beforeCall := stdtime.Now().UTC()
+
 	result, err := service.GetCurrentTime()
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
 	// Record time after the call
-	afterCall := time.Now().UTC()
+	afterCall := stdtime.Now().UTC()
 
 	// Verify that all fields are populated
 	assert.NotZero(t, result.UnixSeconds)
@@ -287,15 +478,15 @@ func TestService_GetCurrentTime(t *testing.T) {
 	assert.True(t, result.UnixMilliseconds < expectedMilliseconds+1000)
 
 	// Verify format consistency by parsing the formatted strings
-	parsedISO, err := time.Parse(ISO8601Layout, result.ISO8601)
+	parsedISO, err := stdtime.Parse(time.ISO8601Layout, result.ISO8601)
 	require.NoError(t, err)
 	assert.Equal(t, result.UnixSeconds, parsedISO.Unix())
 
-	parsedRFC, err := time.Parse(RFC3339Layout, result.RFC3339)
+	parsedRFC, err := stdtime.Parse(time.RFC3339Layout, result.RFC3339)
 	require.NoError(t, err)
 	assert.Equal(t, result.UnixSeconds, parsedRFC.Unix())
 
-	parsedHuman, err := time.Parse(HumanLayout, result.HumanReadable)
+	parsedHuman, err := stdtime.Parse(time.HumanLayout, result.HumanReadable)
 	require.NoError(t, err)
 	assert.Equal(t, result.UnixSeconds, parsedHuman.Unix())
 
@@ -306,7 +497,7 @@ func TestService_GetCurrentTime(t *testing.T) {
 }
 
 func TestService_EdgeCases(t *testing.T) {
-	service := NewService()
+	service := time.NewService()
 
 	tests := []struct {
 		name        string
@@ -317,38 +508,38 @@ func TestService_EdgeCases(t *testing.T) {
 		{
 			name:        "Empty input",
 			input:       "",
-			inputFormat: FormatUnixSeconds,
+			inputFormat: time.FormatUnixSeconds,
 			expectError: true,
 		},
 		{
 			name:        "Whitespace input",
 			input:       "   ",
-			inputFormat: FormatUnixSeconds,
+			inputFormat: time.FormatUnixSeconds,
 			expectError: true,
 		},
 		{
 			name:        "Negative Unix timestamp",
 			input:       "-1",
-			inputFormat: FormatUnixSeconds,
+			inputFormat: time.FormatUnixSeconds,
 			expectError: false, // Should work (before epoch)
 		},
 		{
 			name:        "Very large Unix timestamp",
 			input:       "9999999999",
-			inputFormat: FormatUnixSeconds,
+			inputFormat: time.FormatUnixSeconds,
 			expectError: false, // Should work (far future)
 		},
 		{
 			name:        "Zero Unix timestamp",
 			input:       "0",
-			inputFormat: FormatUnixSeconds,
+			inputFormat: time.FormatUnixSeconds,
 			expectError: false, // Should work (epoch)
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := service.ConvertTime(tt.input, tt.inputFormat, FormatISO8601)
+			_, err := service.ConvertTime(tt.input, tt.inputFormat, time.FormatISO8601)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -360,48 +551,48 @@ func TestService_EdgeCases(t *testing.T) {
 }
 
 func TestGetSupportedFormats(t *testing.T) {
-	formats := GetSupportedFormats()
-	
+	formats := time.GetSupportedFormats()
+
 	expectedFormats := []string{
-		FormatUnixSeconds,
-		FormatUnixMilliseconds,
-		FormatISO8601,
-		FormatRFC3339,
-		FormatHumanReadable,
+		time.FormatUnixSeconds,
+		time.FormatUnixMilliseconds,
+		time.FormatISO8601,
+		time.FormatRFC3339,
+		time.FormatHumanReadable,
 	}
-	
+
 	assert.ElementsMatch(t, expectedFormats, formats)
 	assert.Len(t, formats, 5)
 }
 
 func TestConstants(t *testing.T) {
 	// Test that constants have expected values
-	assert.Equal(t, "unix", FormatUnixSeconds)
-	assert.Equal(t, "unix_ms", FormatUnixMilliseconds)
-	assert.Equal(t, "iso8601", FormatISO8601)
-	assert.Equal(t, "rfc3339", FormatRFC3339)
-	assert.Equal(t, "human", FormatHumanReadable)
-	
-	assert.Equal(t, "2006-01-02T15:04:05Z", ISO8601Layout)
-	assert.Equal(t, time.RFC3339, RFC3339Layout)
-	assert.Equal(t, "2006-01-02 15:04:05 UTC", HumanLayout)
+	assert.Equal(t, "unix", time.FormatUnixSeconds)
+	assert.Equal(t, "unix_ms", time.FormatUnixMilliseconds)
+	assert.Equal(t, "iso8601", time.FormatISO8601)
+	assert.Equal(t, "rfc3339", time.FormatRFC3339)
+	assert.Equal(t, "human", time.FormatHumanReadable)
+
+	assert.Equal(t, "2006-01-02T15:04:05Z", time.ISO8601Layout)
+	assert.Equal(t, stdtime.RFC3339, time.RFC3339Layout)
+	assert.Equal(t, "2006-01-02 15:04:05 UTC", time.HumanLayout)
 }
 
 func BenchmarkConvertTime(b *testing.B) {
-	service := NewService()
-	
+	service := time.NewService()
+
 	b.Run("Unix to ISO8601", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, err := service.ConvertTime("1703518245", FormatUnixSeconds, FormatISO8601)
+			_, err := service.ConvertTime("1703518245", time.FormatUnixSeconds, time.FormatISO8601)
 			if err != nil {
 				b.Fatal(err)
 			}
 		}
 	})
-	
+
 	b.Run("ISO8601 to Unix", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, err := service.ConvertTime("2023-12-25T15:30:45Z", FormatISO8601, FormatUnixSeconds)
+			_, err := service.ConvertTime("2023-12-25T15:30:45Z", time.FormatISO8601, time.FormatUnixSeconds)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -410,8 +601,8 @@ func BenchmarkConvertTime(b *testing.B) {
 }
 
 func BenchmarkGetCurrentTime(b *testing.B) {
-	service := NewService()
-	
+	service := time.NewService()
+
 	for i := 0; i < b.N; i++ {
 		_, err := service.GetCurrentTime()
 		if err != nil {

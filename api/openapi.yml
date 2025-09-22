@@ -1969,6 +1969,18 @@ components:
         format: uuid
         example: "123e4567-e89b-12d3-a456-426614174000"
 
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authentication
+
 tags:
   - name: Health
     description: Health check and monitoring endpoints
@@ -1992,16 +2004,3 @@ tags:
 security:
   - ApiKeyAuth: []
   - BearerAuth: []
-
-components:
-  securitySchemes:
-    ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-Key
-      description: API key for authentication
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: JWT token for authentication

@@ -32,7 +32,7 @@ RUN VERSION=${VERSION:-$(cat VERSION 2>/dev/null || echo "dev")} && \
     GIT_COMMIT=${GIT_COMMIT:-$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")} && \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -a -installsuffix cgo \
-    -ldflags="-w -s -extldflags '-static' -X 'dev-utilities/internal/version.Version=${VERSION}' -X 'dev-utilities/internal/version.BuildDate=${BUILD_DATE}' -X 'dev-utilities/internal/version.GitCommit=${GIT_COMMIT}'" \
+    -ldflags="-w -s -extldflags '-static' -X 'github.com/keyurgolani/DeveloperTools/internal/version.Version=${VERSION}' -X 'github.com/keyurgolani/DeveloperTools/internal/version.BuildDate=${BUILD_DATE}' -X 'github.com/keyurgolani/DeveloperTools/internal/version.GitCommit=${GIT_COMMIT}'" \
     -o server ./cmd/server
 
 # Create directories for configuration and secrets in builder stage

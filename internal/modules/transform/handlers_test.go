@@ -1,4 +1,4 @@
-package transform
+package transform_test
 
 import (
 	"bytes"
@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	. "github.com/keyurgolani/DeveloperTools/internal/modules/transform"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -15,20 +17,31 @@ import (
 func setupTestRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	
+
 	service := NewTransformService()
 	handler := NewHandler(service, nil) // Pass nil for metrics in tests
-	
+
 	v1 := router.Group("/api/v1")
 	handler.RegisterRoutes(v1)
-	
+
 	return router
 }
 
 func TestHandler_Base64(t *testing.T) {
 	router := setupTestRouter()
+	tests := getBase64HandlerTestCases()
+	executeBase64Tests(t, router, tests)
+}
 
-	tests := []struct {
+// getBase64HandlerTestCases returns test cases for Base64 handler testing.
+func getBase64HandlerTestCases() []struct { //nolint:funlen // test data structure
+	name           string
+	request        Base64Request
+	expectedStatus int
+	expectedResult string
+	expectError    bool
+} {
+	return []struct {
 		name           string
 		request        Base64Request
 		expectedStatus int
@@ -100,32 +113,6 @@ func TestHandler_Base64(t *testing.T) {
 			expectError:    true,
 		},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			body, _ := json.Marshal(tt.request)
-			req := httptest.NewRequest(http.MethodPost, "/api/v1/transform/base64", bytes.NewBuffer(body))
-			req.Header.Set("Content-Type", "application/json")
-			
-			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
-			
-			assert.Equal(t, tt.expectedStatus, w.Code)
-			
-			var response map[string]interface{}
-			err := json.Unmarshal(w.Body.Bytes(), &response)
-			require.NoError(t, err)
-			
-			if tt.expectError {
-				assert.False(t, response["success"].(bool))
-				assert.NotNil(t, response["error"])
-			} else {
-				assert.True(t, response["success"].(bool))
-				data := response["data"].(map[string]interface{})
-				assert.Equal(t, tt.expectedResult, data["result"])
-			}
-		})
-	}
 }
 
 func TestHandler_URL(t *testing.T) {
@@ -188,104 +175,100 @@ func TestHandler_URL(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			body, _ := json.Marshal(tt.request)
-			req := httptest.NewRequest(http.MethodPost, "/api/v1/transform/url", bytes.NewBuffer(body))
-			req.Header.Set("Content-Type", "application/json")
-			
-			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
-			
-			assert.Equal(t, tt.expectedStatus, w.Code)
-			
-			var response map[string]interface{}
-			err := json.Unmarshal(w.Body.Bytes(), &response)
-			require.NoError(t, err)
-			
-			if tt.expectError {
-				assert.False(t, response["success"].(bool))
-				assert.NotNil(t, response["error"])
-			} else {
-				assert.True(t, response["success"].(bool))
-				data := response["data"].(map[string]interface{})
-				assert.Equal(t, tt.expectedResult, data["result"])
-			}
-		})
-	}
+	executeURLTests(t, router, tests)
 }
 
 func TestHandler_JWTDecode(t *testing.T) {
 	router := setupTestRouter()
+	validToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c" // #nosec G101 - test token only //nolint:lll
 
-	// Valid JWT token
-	validToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+	tests := getJWTHandlerTestCases(validToken)
 
-	tests := []struct {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			executeJWTDecodeTest(t, router, tt)
+		})
+	}
+}
+
+func getJWTHandlerTestCases(validToken string) []struct {
+	name           string
+	request        JWTDecodeRequest
+	expectedStatus int
+	expectError    bool
+} {
+	return []struct {
 		name           string
 		request        JWTDecodeRequest
 		expectedStatus int
 		expectError    bool
 	}{
 		{
-			name: "valid JWT token",
-			request: JWTDecodeRequest{
-				Token: validToken,
-			},
+			name:           "valid JWT token",
+			request:        JWTDecodeRequest{Token: validToken},
 			expectedStatus: http.StatusOK,
 			expectError:    false,
 		},
 		{
-			name: "invalid JWT format",
-			request: JWTDecodeRequest{
-				Token: "invalid.token",
-			},
+			name:           "invalid JWT format",
+			request:        JWTDecodeRequest{Token: "invalid.token"},
 			expectedStatus: http.StatusBadRequest,
 			expectError:    true,
 		},
 		{
-			name: "invalid base64 in header",
-			request: JWTDecodeRequest{
-				Token: "invalid!!!.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.signature",
-			},
+			name:           "invalid base64 in header",
+			request:        JWTDecodeRequest{Token: "invalid!!!.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.signature"}, //nolint:lll
 			expectedStatus: http.StatusBadRequest,
 			expectError:    true,
 		},
 	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			body, _ := json.Marshal(tt.request)
-			req := httptest.NewRequest(http.MethodPost, "/api/v1/transform/jwt/decode", bytes.NewBuffer(body))
-			req.Header.Set("Content-Type", "application/json")
-			
-			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
-			
-			assert.Equal(t, tt.expectedStatus, w.Code)
-			
-			var response map[string]interface{}
-			err := json.Unmarshal(w.Body.Bytes(), &response)
-			require.NoError(t, err)
-			
-			if tt.expectError {
-				assert.False(t, response["success"].(bool))
-				assert.NotNil(t, response["error"])
-			} else {
-				assert.True(t, response["success"].(bool))
-				data := response["data"].(map[string]interface{})
-				assert.False(t, data["signatureVerified"].(bool))
-				assert.NotNil(t, data["header"])
-				assert.NotNil(t, data["payload"])
-			}
-		})
+func executeJWTDecodeTest(t *testing.T, router *gin.Engine, tt struct {
+	name           string
+	request        JWTDecodeRequest
+	expectedStatus int
+	expectError    bool
+}) {
+	body, _ := json.Marshal(tt.request)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/transform/jwt/decode", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, tt.expectedStatus, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+
+	if tt.expectError {
+		assert.False(t, response["success"].(bool))
+		assert.NotNil(t, response["error"])
+	} else {
+		assert.True(t, response["success"].(bool))
+		data := response["data"].(map[string]interface{})
+		assert.False(t, data["signatureVerified"].(bool))
+		assert.NotNil(t, data["header"])
+		assert.NotNil(t, data["payload"])
 	}
 }
 
 func TestHandler_Compress(t *testing.T) {
 	router := setupTestRouter()
+	tests := getCompressionHandlerTestCases()
+	executeCompressionTests(t, router, tests)
+}
 
-	tests := []struct {
+// getCompressionHandlerTestCases returns test cases for compression handler testing.
+func getCompressionHandlerTestCases() []struct {
+	name           string
+	request        CompressionRequest
+	expectedStatus int
+	expectError    bool
+} {
+	return []struct {
 		name           string
 		request        CompressionRequest
 		expectedStatus int
@@ -332,22 +315,30 @@ func TestHandler_Compress(t *testing.T) {
 			expectError:    true,
 		},
 	}
+}
 
+// executeCompressionTests executes compression handler tests.
+func executeCompressionTests(t *testing.T, router *gin.Engine, tests []struct {
+	name           string
+	request        CompressionRequest
+	expectedStatus int
+	expectError    bool
+}) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			body, _ := json.Marshal(tt.request)
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/transform/compress", bytes.NewBuffer(body))
 			req.Header.Set("Content-Type", "application/json")
-			
+
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
-			
+
 			assert.Equal(t, tt.expectedStatus, w.Code)
-			
+
 			var response map[string]interface{}
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			require.NoError(t, err)
-			
+
 			if tt.expectError {
 				assert.False(t, response["success"].(bool))
 				assert.NotNil(t, response["error"])
@@ -374,17 +365,87 @@ func TestHandler_InvalidJSON(t *testing.T) {
 		t.Run("invalid JSON for "+endpoint, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, endpoint, bytes.NewBufferString("invalid json"))
 			req.Header.Set("Content-Type", "application/json")
-			
+
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, req)
-			
+
 			assert.Equal(t, http.StatusBadRequest, w.Code)
-			
+
 			var response map[string]interface{}
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			require.NoError(t, err)
-			
+
 			assert.NotNil(t, response["error"])
+		})
+	}
+}
+
+// Helper function to execute Base64 transform tests.
+func executeBase64Tests(t *testing.T, router *gin.Engine, tests []struct {
+	name           string
+	request        Base64Request
+	expectedStatus int
+	expectedResult string
+	expectError    bool
+}) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body, _ := json.Marshal(tt.request)
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/transform/base64", bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+
+			var response map[string]interface{}
+			err := json.Unmarshal(w.Body.Bytes(), &response)
+			require.NoError(t, err)
+
+			if tt.expectError {
+				assert.False(t, response["success"].(bool))
+				assert.NotNil(t, response["error"])
+			} else {
+				assert.True(t, response["success"].(bool))
+				data := response["data"].(map[string]interface{})
+				assert.Equal(t, tt.expectedResult, data["result"])
+			}
+		})
+	}
+}
+
+// Helper function to execute URL transform tests.
+func executeURLTests(t *testing.T, router *gin.Engine, tests []struct {
+	name           string
+	request        URLEncodeRequest
+	expectedStatus int
+	expectedResult string
+	expectError    bool
+}) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body, _ := json.Marshal(tt.request)
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/transform/url", bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+
+			var response map[string]interface{}
+			err := json.Unmarshal(w.Body.Bytes(), &response)
+			require.NoError(t, err)
+
+			if tt.expectError {
+				assert.False(t, response["success"].(bool))
+				assert.NotNil(t, response["error"])
+			} else {
+				assert.True(t, response["success"].(bool))
+				data := response["data"].(map[string]interface{})
+				assert.Equal(t, tt.expectedResult, data["result"])
+			}
 		})
 	}
 }

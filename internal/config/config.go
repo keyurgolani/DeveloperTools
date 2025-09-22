@@ -7,9 +7,11 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/keyurgolani/DeveloperTools/internal/constants"
 )
 
-// Config holds all configuration for the server
+// Config holds all configuration for the server.
 type Config struct {
 	Server    ServerConfig    `json:"server"`
 	Auth      AuthConfig      `json:"auth"`
@@ -20,7 +22,7 @@ type Config struct {
 	Secrets   SecretsConfig   `json:"secrets"`
 }
 
-// CryptoConfig holds cryptography-specific configuration
+// CryptoConfig holds cryptography-specific configuration.
 type CryptoConfig struct {
 	ArgonMemory      int `json:"argonMemory"`      // Memory in KB
 	ArgonIterations  int `json:"argonIterations"`  // Number of iterations
@@ -29,18 +31,18 @@ type CryptoConfig struct {
 	ArgonKeyLength   int `json:"argonKeyLength"`   // Key length in bytes
 }
 
-// SecretsConfig holds secret management configuration
+// SecretsConfig holds secret management configuration.
 type SecretsConfig struct {
 	MountPath string `json:"mountPath"` // Path where secrets are mounted (e.g., /etc/secrets)
 }
 
-// ServerConfig holds server-specific configuration
+// ServerConfig holds server-specific configuration.
 type ServerConfig struct {
 	Port       int  `json:"port"`
 	TLSEnabled bool `json:"tlsEnabled"`
 }
 
-// AuthConfig holds authentication configuration
+// AuthConfig holds authentication configuration.
 type AuthConfig struct {
 	Method      string   `json:"method"`      // "api_key", "jwt", or "none"
 	APIKeys     []string `json:"apiKeys"`     // Valid API keys for API key authentication
@@ -49,7 +51,7 @@ type AuthConfig struct {
 	JWTAudience string   `json:"jwtAudience"` // Expected JWT audience
 }
 
-// RateLimitConfig holds rate limiting configuration
+// RateLimitConfig holds rate limiting configuration.
 type RateLimitConfig struct {
 	Store    string `json:"store"`    // "memory" or "redis"
 	RedisURL string `json:"redisUrl"` // Redis connection URL
@@ -118,7 +120,7 @@ func Load(opts ...LoadOptions) (*Config, error) {
 func getDefaultConfig() *Config {
 	return &Config{
 		Server: ServerConfig{
-			Port:       8080,
+			Port:       constants.DefaultPort,
 			TLSEnabled: false,
 		},
 		Auth: AuthConfig{
@@ -146,11 +148,11 @@ func getDefaultConfig() *Config {
 			SampleRate:     1.0,
 		},
 		Crypto: CryptoConfig{
-			ArgonMemory:      65536, // 64MB
-			ArgonIterations:  3,
-			ArgonParallelism: 4,
-			ArgonSaltLength:  16,
-			ArgonKeyLength:   32,
+			ArgonMemory:      constants.DefaultArgonMemory,
+			ArgonIterations:  constants.DefaultArgonIterations,
+			ArgonParallelism: constants.DefaultArgonParallelism,
+			ArgonSaltLength:  constants.DefaultArgonSaltLength,
+			ArgonKeyLength:   constants.DefaultArgonKeyLength,
 		},
 		Secrets: SecretsConfig{
 			MountPath: "/etc/secrets",
@@ -160,11 +162,16 @@ func getDefaultConfig() *Config {
 
 // loadFromFile loads configuration from a JSON file
 func loadFromFile(config *Config, filePath string) error {
+	// Validate file path to prevent directory traversal
+	if strings.Contains(filePath, "..") {
+		return fmt.Errorf("invalid file path: %s", filePath)
+	}
+
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return fmt.Errorf("configuration file does not exist: %s", filePath)
 	}
 
-	data, err := os.ReadFile(filePath)
+	data, err := os.ReadFile(filePath) // #nosec G304 - path validated above
 	if err != nil {
 		return fmt.Errorf("failed to read configuration file: %w", err)
 	}
@@ -178,15 +185,25 @@ func loadFromFile(config *Config, filePath string) error {
 
 // loadFromEnvironment loads configuration from environment variables
 func loadFromEnvironment(config *Config) {
-	// Server configuration
+	loadServerConfig(config)
+	loadAuthConfig(config)
+	loadRateLimitConfig(config)
+	loadLogConfig(config)
+	loadTracingConfig(config)
+	loadCryptoConfig(config)
+	loadSecretsConfig(config)
+}
+
+func loadServerConfig(config *Config) {
 	if port := getEnvAsInt("SERVER_PORT", 0); port != 0 {
 		config.Server.Port = port
 	}
 	if tlsEnabled := getEnvAsBool("SERVER_TLS_ENABLED", false); getEnv("SERVER_TLS_ENABLED", "") != "" {
 		config.Server.TLSEnabled = tlsEnabled
 	}
+}
 
-	// Auth configuration
+func loadAuthConfig(config *Config) {
 	if method := getEnv("AUTH_METHOD", ""); method != "" {
 		config.Auth.Method = method
 	}
@@ -202,21 +219,24 @@ func loadFromEnvironment(config *Config) {
 	if jwtAudience := getEnv("AUTH_JWT_AUDIENCE", ""); jwtAudience != "" {
 		config.Auth.JWTAudience = jwtAudience
 	}
+}
 
-	// Rate limit configuration
+func loadRateLimitConfig(config *Config) {
 	if store := getEnv("RATE_LIMIT_STORE", ""); store != "" {
 		config.RateLimit.Store = store
 	}
 	if redisURL := getEnv("RATE_LIMIT_REDIS_URL", ""); redisURL != "" {
 		config.RateLimit.RedisURL = redisURL
 	}
+}
 
-	// Log configuration
+func loadLogConfig(config *Config) {
 	if level := getEnv("LOG_LEVEL", ""); level != "" {
 		config.Log.Level = level
 	}
+}
 
-	// Tracing configuration
+func loadTracingConfig(config *Config) {
 	if enabled := getEnvAsBool("TRACING_ENABLED", false); getEnv("TRACING_ENABLED", "") != "" {
 		config.Tracing.Enabled = enabled
 	}
@@ -241,8 +261,9 @@ func loadFromEnvironment(config *Config) {
 	if sampleRate := getEnvAsFloat("TRACING_SAMPLE_RATE", -1); sampleRate >= 0 {
 		config.Tracing.SampleRate = sampleRate
 	}
+}
 
-	// Crypto configuration
+func loadCryptoConfig(config *Config) {
 	if argonMemory, set := getEnvAsIntWithCheck("ARGON_MEMORY"); set {
 		config.Crypto.ArgonMemory = argonMemory
 	}
@@ -258,8 +279,9 @@ func loadFromEnvironment(config *Config) {
 	if argonKeyLength, set := getEnvAsIntWithCheck("ARGON_KEY_LENGTH"); set {
 		config.Crypto.ArgonKeyLength = argonKeyLength
 	}
+}
 
-	// Secrets configuration
+func loadSecretsConfig(config *Config) {
 	if mountPath := getEnv("SECRETS_MOUNT_PATH", ""); mountPath != "" {
 		config.Secrets.MountPath = mountPath
 	}
@@ -307,11 +329,16 @@ func loadSecrets(config *Config) error {
 
 // readSecret reads a secret from a mounted file
 func readSecret(path string) (string, error) {
+	// Validate path to prevent directory traversal
+	if strings.Contains(path, "..") {
+		return "", fmt.Errorf("invalid secret path: %s", path)
+	}
+
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return "", fmt.Errorf("secret file does not exist: %s", path)
 	}
 
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 - path validated above
 	if err != nil {
 		return "", fmt.Errorf("failed to read secret file: %w", err)
 	}
@@ -321,12 +348,34 @@ func readSecret(path string) (string, error) {
 
 // validate ensures the configuration is valid
 func (c *Config) validate() error {
-	// Validate server configuration
+	if err := c.validateServer(); err != nil {
+		return err
+	}
+	if err := c.validateAuth(); err != nil {
+		return err
+	}
+	if err := c.validateLog(); err != nil {
+		return err
+	}
+	if err := c.validateRateLimit(); err != nil {
+		return err
+	}
+	if err := c.validateTracing(); err != nil {
+		return err
+	}
+	return c.validateCrypto()
+}
+
+// validateServer validates server configuration
+func (c *Config) validateServer() error {
 	if c.Server.Port < 1 || c.Server.Port > 65535 {
 		return fmt.Errorf("invalid server port: %d", c.Server.Port)
 	}
+	return nil
+}
 
-	// Validate auth configuration
+// validateAuth validates authentication configuration
+func (c *Config) validateAuth() error {
 	validAuthMethods := []string{"api_key", "jwt", "none"}
 	if !contains(validAuthMethods, c.Auth.Method) {
 		return fmt.Errorf("invalid auth method: %s, must be one of %v", c.Auth.Method, validAuthMethods)
@@ -340,45 +389,63 @@ func (c *Config) validate() error {
 		return fmt.Errorf("JWT secret is required when using JWT authentication")
 	}
 
-	// Validate log configuration
+	return nil
+}
+
+// validateLog validates logging configuration
+func (c *Config) validateLog() error {
 	validLogLevels := []string{"debug", "info", "warn", "error"}
 	if !contains(validLogLevels, c.Log.Level) {
 		return fmt.Errorf("invalid log level: %s, must be one of %v", c.Log.Level, validLogLevels)
 	}
+	return nil
+}
 
-	// Validate rate limit configuration
+// validateRateLimit validates rate limiting configuration
+func (c *Config) validateRateLimit() error {
 	validStores := []string{"memory", "redis"}
 	if !contains(validStores, c.RateLimit.Store) {
 		return fmt.Errorf("invalid rate limit store: %s, must be one of %v", c.RateLimit.Store, validStores)
 	}
 
 	if c.RateLimit.Store == "redis" && c.RateLimit.RedisURL == "" {
-		return fmt.Errorf("Redis URL is required when using Redis rate limit store")
+		return fmt.Errorf("redis URL is required when using Redis rate limit store")
 	}
 
-	// Validate tracing configuration
-	if c.Tracing.Enabled {
-		validExporters := []string{"jaeger", "otlp", "noop"}
-		if !contains(validExporters, c.Tracing.Exporter) {
-			return fmt.Errorf("invalid tracing exporter: %s, must be one of %v", c.Tracing.Exporter, validExporters)
-		}
+	return nil
+}
 
-		if c.Tracing.SampleRate < 0.0 || c.Tracing.SampleRate > 1.0 {
-			return fmt.Errorf("invalid tracing sample rate: %f, must be between 0.0 and 1.0", c.Tracing.SampleRate)
-		}
-
-		if c.Tracing.Exporter == "jaeger" && c.Tracing.JaegerEndpoint == "" {
-			return fmt.Errorf("Jaeger endpoint is required when using Jaeger exporter")
-		}
-
-		if c.Tracing.Exporter == "otlp" && c.Tracing.OTLPEndpoint == "" {
-			return fmt.Errorf("OTLP endpoint is required when using OTLP exporter")
-		}
+// validateTracing validates tracing configuration
+func (c *Config) validateTracing() error {
+	if !c.Tracing.Enabled {
+		return nil
 	}
 
-	// Validate crypto configuration
-	if c.Crypto.ArgonMemory < 1024 {
-		return fmt.Errorf("Argon2 memory must be at least 1024 KB, got %d", c.Crypto.ArgonMemory)
+	// Check for deprecated Jaeger exporter first
+	if c.Tracing.Exporter == "jaeger" {
+		return fmt.Errorf("jaeger exporter is deprecated, please use OTLP exporter instead")
+	}
+
+	validExporters := []string{"otlp", "noop"}
+	if !contains(validExporters, c.Tracing.Exporter) {
+		return fmt.Errorf("invalid tracing exporter: %s, must be one of %v", c.Tracing.Exporter, validExporters)
+	}
+
+	if c.Tracing.SampleRate < 0.0 || c.Tracing.SampleRate > 1.0 {
+		return fmt.Errorf("invalid tracing sample rate: %f, must be between 0.0 and 1.0", c.Tracing.SampleRate)
+	}
+
+	if c.Tracing.Exporter == "otlp" && c.Tracing.OTLPEndpoint == "" {
+		return fmt.Errorf("OTLP endpoint is required when using OTLP exporter")
+	}
+
+	return nil
+}
+
+// validateCrypto validates cryptographic configuration
+func (c *Config) validateCrypto() error {
+	if c.Crypto.ArgonMemory < constants.MinArgonMemory {
+		return fmt.Errorf("Argon2 memory must be at least %d KB, got %d", constants.MinArgonMemory, c.Crypto.ArgonMemory)
 	}
 
 	if c.Crypto.ArgonIterations < 1 {
@@ -389,12 +456,14 @@ func (c *Config) validate() error {
 		return fmt.Errorf("Argon2 parallelism must be at least 1, got %d", c.Crypto.ArgonParallelism)
 	}
 
-	if c.Crypto.ArgonSaltLength < 8 {
-		return fmt.Errorf("Argon2 salt length must be at least 8 bytes, got %d", c.Crypto.ArgonSaltLength)
+	if c.Crypto.ArgonSaltLength < constants.MinArgonSaltLength {
+		return fmt.Errorf("Argon2 salt length must be at least %d bytes, got %d",
+			constants.MinArgonSaltLength, c.Crypto.ArgonSaltLength)
 	}
 
-	if c.Crypto.ArgonKeyLength < 16 {
-		return fmt.Errorf("Argon2 key length must be at least 16 bytes, got %d", c.Crypto.ArgonKeyLength)
+	if c.Crypto.ArgonKeyLength < constants.MinArgonKeyLength {
+		return fmt.Errorf("Argon2 key length must be at least %d bytes, got %d",
+			constants.MinArgonKeyLength, c.Crypto.ArgonKeyLength)
 	}
 
 	return nil
@@ -465,7 +534,8 @@ func getEnvAsMap(key string, defaultValue map[string]string) map[string]string {
 		result := make(map[string]string)
 		pairs := strings.Split(value, ",")
 		for _, pair := range pairs {
-			if kv := strings.SplitN(strings.TrimSpace(pair), "=", 2); len(kv) == 2 {
+			kv := strings.SplitN(strings.TrimSpace(pair), "=", constants.KeyValuePairParts)
+			if len(kv) == constants.KeyValuePairParts {
 				result[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
 			}
 		}

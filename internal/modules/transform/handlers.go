@@ -1,19 +1,19 @@
 package transform
 
 import (
-	"dev-utilities/internal/metrics"
-	"dev-utilities/pkg/apierror"
+	"github.com/keyurgolani/DeveloperTools/internal/metrics"
+	"github.com/keyurgolani/DeveloperTools/pkg/apierror"
 
 	"github.com/gin-gonic/gin"
 )
 
-// Handler handles HTTP requests for transform operations
+// Handler handles HTTP requests for transform operations.
 type Handler struct {
 	service TransformService
 	metrics *metrics.Metrics
 }
 
-// NewHandler creates a new transform handler
+// NewHandler creates a new transform handler.
 func NewHandler(service TransformService, metrics *metrics.Metrics) *Handler {
 	return &Handler{
 		service: service,
@@ -21,7 +21,7 @@ func NewHandler(service TransformService, metrics *metrics.Metrics) *Handler {
 	}
 }
 
-// RegisterRoutes registers all transform routes
+// RegisterRoutes registers all transform routes.
 func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 	transform := router.Group("/transform")
 	{
@@ -32,7 +32,7 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 	}
 }
 
-// handleBase64 handles Base64 encoding/decoding requests
+// handleBase64 handles Base64 encoding/decoding requests.
 func (h *Handler) handleBase64(c *gin.Context) {
 	var req Base64Request
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -79,7 +79,7 @@ func (h *Handler) handleBase64(c *gin.Context) {
 	apierror.RespondWithSuccess(c, response)
 }
 
-// handleURL handles URL encoding/decoding requests
+// handleURL handles URL encoding/decoding requests.
 func (h *Handler) handleURL(c *gin.Context) {
 	var req URLEncodeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -126,7 +126,7 @@ func (h *Handler) handleURL(c *gin.Context) {
 	apierror.RespondWithSuccess(c, response)
 }
 
-// handleJWTDecode handles JWT decoding requests
+// handleJWTDecode handles JWT decoding requests.
 func (h *Handler) handleJWTDecode(c *gin.Context) {
 	var req JWTDecodeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -155,7 +155,7 @@ func (h *Handler) handleJWTDecode(c *gin.Context) {
 	apierror.RespondWithSuccess(c, result)
 }
 
-// handleCompress handles compression/decompression requests
+// handleCompress handles compression/decompression requests.
 func (h *Handler) handleCompress(c *gin.Context) {
 	var req CompressionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

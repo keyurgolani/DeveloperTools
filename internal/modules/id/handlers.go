@@ -3,18 +3,18 @@ package id
 import (
 	"net/http"
 
-	"dev-utilities/internal/metrics"
+	"github.com/keyurgolani/DeveloperTools/internal/metrics"
 
 	"github.com/gin-gonic/gin"
 )
 
-// Handler handles HTTP requests for ID generation operations
+// Handler handles HTTP requests for ID generation operations.
 type Handler struct {
 	service IDService
 	metrics *metrics.Metrics
 }
 
-// NewHandler creates a new ID handler
+// NewHandler creates a new ID handler.
 func NewHandler(service IDService, metrics *metrics.Metrics) *Handler {
 	return &Handler{
 		service: service,
@@ -22,7 +22,7 @@ func NewHandler(service IDService, metrics *metrics.Metrics) *Handler {
 	}
 }
 
-// RegisterRoutes registers ID routes with the router
+// RegisterRoutes registers ID routes with the router.
 func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 	id := router.Group("/id")
 	{
@@ -31,7 +31,7 @@ func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 	}
 }
 
-// GenerateUUID handles UUID generation requests
+// GenerateUUID handles UUID generation requests.
 func (h *Handler) GenerateUUID(c *gin.Context) {
 	var req UUIDRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -78,7 +78,7 @@ func (h *Handler) GenerateUUID(c *gin.Context) {
 	})
 }
 
-// GenerateNanoID handles Nano ID generation requests
+// GenerateNanoID handles Nano ID generation requests.
 func (h *Handler) GenerateNanoID(c *gin.Context) {
 	var req NanoIDRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

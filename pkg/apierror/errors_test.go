@@ -1,10 +1,12 @@
-package apierror
+package apierror_test
 
 import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	. "github.com/keyurgolani/DeveloperTools/pkg/apierror"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -67,8 +69,46 @@ func TestAPIError_HTTPStatusCode(t *testing.T) {
 
 func TestRespondWithError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	tests := getErrorResponseTestCases()
 
-	tests := []struct {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			// Set request ID if provided
+			if tt.requestID != "" {
+				c.Set("request_id", tt.requestID)
+			}
+
+			RespondWithError(c, tt.error)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+
+			// Check request ID header if set
+			if tt.requestID != "" {
+				assert.Equal(t, tt.requestID, w.Header().Get("X-Request-ID"))
+			}
+
+			// Parse response body
+			var response ErrorResponse
+			err := json.Unmarshal(w.Body.Bytes(), &response)
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.expectedBody, response)
+		})
+	}
+}
+
+// getErrorResponseTestCases returns test cases for error response testing.
+func getErrorResponseTestCases() []struct {
+	name           string
+	error          *APIError
+	expectedStatus int
+	expectedBody   ErrorResponse
+	requestID      string
+} {
+	return []struct {
 		name           string
 		error          *APIError
 		expectedStatus int
@@ -114,43 +154,15 @@ func TestRespondWithError(t *testing.T) {
 			},
 		},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
-
-			// Set request ID if provided
-			if tt.requestID != "" {
-				c.Set("request_id", tt.requestID)
-			}
-
-			RespondWithError(c, tt.error)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-
-			// Check request ID header if set
-			if tt.requestID != "" {
-				assert.Equal(t, tt.requestID, w.Header().Get("X-Request-ID"))
-			}
-
-			// Parse response body
-			var response ErrorResponse
-			err := json.Unmarshal(w.Body.Bytes(), &response)
-			require.NoError(t, err)
-
-			assert.Equal(t, tt.expectedBody, response)
-		})
-	}
 }
 
 func TestRespondWithSuccess(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
-		name        string
-		data        interface{}
-		requestID   string
+		name         string
+		data         interface{}
+		requestID    string
 		expectedBody SuccessResponse
 	}{
 		{

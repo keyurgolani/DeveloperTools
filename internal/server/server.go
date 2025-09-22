@@ -7,24 +7,25 @@ import (
 	"strings"
 	"time"
 
-	"dev-utilities/internal/config"
-	"dev-utilities/internal/logging"
-	"dev-utilities/internal/metrics"
-	"dev-utilities/internal/middleware"
-	"dev-utilities/internal/modules/crypto"
-	"dev-utilities/internal/modules/id"
-	"dev-utilities/internal/modules/network"
-	"dev-utilities/internal/modules/text"
-	timeModule "dev-utilities/internal/modules/time"
-	"dev-utilities/internal/modules/transform"
-	"dev-utilities/internal/tracing"
-	"dev-utilities/internal/version"
+	"github.com/keyurgolani/DeveloperTools/internal/config"
+	"github.com/keyurgolani/DeveloperTools/internal/constants"
+	"github.com/keyurgolani/DeveloperTools/internal/logging"
+	"github.com/keyurgolani/DeveloperTools/internal/metrics"
+	"github.com/keyurgolani/DeveloperTools/internal/middleware"
+	"github.com/keyurgolani/DeveloperTools/internal/modules/crypto"
+	"github.com/keyurgolani/DeveloperTools/internal/modules/id"
+	"github.com/keyurgolani/DeveloperTools/internal/modules/network"
+	"github.com/keyurgolani/DeveloperTools/internal/modules/text"
+	timeModule "github.com/keyurgolani/DeveloperTools/internal/modules/time"
+	"github.com/keyurgolani/DeveloperTools/internal/modules/transform"
+	"github.com/keyurgolani/DeveloperTools/internal/tracing"
+	"github.com/keyurgolani/DeveloperTools/internal/version"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
-// Server represents the HTTP server
+// Server represents the HTTP server.
 type Server struct {
 	config     *config.Config
 	router     *gin.Engine
@@ -34,12 +35,12 @@ type Server struct {
 	tracer     *tracing.Tracer
 }
 
-// New creates a new server instance
+// New creates a new server instance.
 func New(cfg *config.Config, logger *logging.Logger) *Server {
 	return NewWithMetrics(cfg, logger, metrics.New())
 }
 
-// NewWithMetrics creates a new server instance with custom metrics (useful for testing)
+// NewWithMetrics creates a new server instance with custom metrics (useful for testing).
 func NewWithMetrics(cfg *config.Config, logger *logging.Logger, metricsInstance *metrics.Metrics) *Server {
 	// Set Gin mode based on log level
 	if cfg.Log.Level == "debug" {
@@ -61,7 +62,7 @@ func NewWithMetrics(cfg *config.Config, logger *logging.Logger, metricsInstance 
 		OTLPHeaders:    cfg.Tracing.OTLPHeaders,
 		SampleRate:     cfg.Tracing.SampleRate,
 	}
-	
+
 	tracerInstance, err := tracing.New(tracingConfig)
 	if err != nil {
 		logger.LogError(err, "Failed to initialize tracing, continuing without tracing")
@@ -69,21 +70,21 @@ func NewWithMetrics(cfg *config.Config, logger *logging.Logger, metricsInstance 
 	}
 
 	router := gin.New()
-	
+
 	// Add error handling middleware first
 	router.Use(middleware.ErrorHandlerMiddleware(logger))
 	router.Use(requestIDMiddleware())
-	
+
 	// Add tracing middleware if enabled
 	if tracerInstance != nil {
 		router.Use(tracerInstance.GinMiddleware())
 		router.Use(tracerInstance.TracingContextMiddleware())
 	}
-	
+
 	router.Use(metricsInstance.MetricsMiddleware())
 	router.Use(loggingMiddleware(logger))
 	router.Use(middleware.ErrorResponseMiddleware())
-	
+
 	// Handle 404 and 405 errors
 	router.NoRoute(middleware.NotFoundHandler())
 	router.NoMethod(middleware.MethodNotAllowedHandler())
@@ -101,7 +102,7 @@ func NewWithMetrics(cfg *config.Config, logger *logging.Logger, metricsInstance 
 	return server
 }
 
-// setupRoutes configures all the routes
+// setupRoutes configures all the routes.
 func (s *Server) setupRoutes() {
 	// Metrics endpoint (Prometheus scraping)
 	s.router.GET("/metrics", s.metrics.Handler())
@@ -119,32 +120,32 @@ func (s *Server) setupRoutes() {
 	{
 		// Status endpoint
 		v1.GET("/status", s.handleStatus)
-		
+
 		// Register crypto module routes
 		cryptoService := crypto.NewCryptoService()
 		cryptoHandler := crypto.NewHandler(cryptoService, s.metrics)
 		cryptoHandler.RegisterRoutes(v1)
-		
+
 		// Register text module routes
 		textService := text.NewTextService()
 		textHandler := text.NewHandler(textService, s.metrics)
 		textHandler.RegisterRoutes(v1)
-		
+
 		// Register transform module routes
 		transformService := transform.NewTransformService()
 		transformHandler := transform.NewHandler(transformService, s.metrics)
 		transformHandler.RegisterRoutes(v1)
-		
+
 		// Register ID module routes
 		idService := id.NewService()
 		idHandler := id.NewHandler(idService, s.metrics)
 		idHandler.RegisterRoutes(v1)
-		
+
 		// Register time module routes
 		timeService := timeModule.NewService()
 		timeHandler := timeModule.NewHandler(timeService, s.metrics)
 		timeHandler.RegisterRoutes(v1)
-		
+
 		// Register network module routes
 		networkService := network.NewNetworkService()
 		networkHandler := network.NewHandler(networkService, s.metrics)
@@ -152,16 +153,16 @@ func (s *Server) setupRoutes() {
 	}
 }
 
-// Start starts the HTTP server
+// Start starts the HTTP server.
 func (s *Server) Start() error {
 	addr := fmt.Sprintf(":%d", s.config.Server.Port)
-	
+
 	s.httpServer = &http.Server{
 		Addr:         addr,
 		Handler:      s.router,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		ReadTimeout:  constants.DefaultReadTimeout,
+		WriteTimeout: constants.DefaultWriteTimeout,
+		IdleTimeout:  constants.DefaultIdleTimeout,
 	}
 
 	s.logger.Info("Starting server", "addr", addr, "tls", s.config.Server.TLSEnabled)
@@ -178,36 +179,36 @@ func (s *Server) Start() error {
 	return nil
 }
 
-// Shutdown gracefully shuts down the server
+// Shutdown gracefully shuts down the server.
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.logger.Info("Shutting down server...")
-	
+
 	// Shutdown tracing first
 	if s.tracer != nil {
 		if err := s.tracer.Shutdown(ctx); err != nil {
 			s.logger.LogError(err, "Failed to shutdown tracer")
 		}
 	}
-	
+
 	// Only shutdown HTTP server if it was started
 	if s.httpServer != nil {
 		return s.httpServer.Shutdown(ctx)
 	}
-	
+
 	return nil
 }
 
-// GetRouter returns the Gin router for testing purposes
+// GetRouter returns the Gin router for testing purposes.
 func (s *Server) GetRouter() *gin.Engine {
 	return s.router
 }
 
-// ServeHTTP implements the http.Handler interface
+// ServeHTTP implements the http.Handler interface.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.router.ServeHTTP(w, r)
 }
 
-// Health check handlers
+// Health check handlers.
 func (s *Server) handleHealth(c *gin.Context) {
 	versionInfo := version.Get()
 	c.JSON(http.StatusOK, gin.H{
@@ -239,23 +240,23 @@ func (s *Server) handleStatus(c *gin.Context) {
 	})
 }
 
-// requestIDMiddleware adds a unique request ID to each request
+// requestIDMiddleware adds a unique request ID to each request.
 func requestIDMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requestID := c.GetHeader("X-Request-ID")
 		if requestID == "" {
 			requestID = uuid.New().String()
 		}
-		
+
 		// Set request ID in context and response header
 		c.Set("request_id", requestID)
 		c.Header("X-Request-ID", requestID)
-		
+
 		c.Next()
 	}
 }
 
-// loggingMiddleware provides structured logging for HTTP requests with request ID tracing
+// loggingMiddleware provides structured logging for HTTP requests with request ID tracing.
 func loggingMiddleware(logger *logging.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
@@ -299,9 +300,9 @@ func loggingMiddleware(logger *logging.Logger) gin.HandlerFunc {
 
 		// Log based on status code
 		switch {
-		case status >= 500:
+		case status >= constants.LogLevelErrorThreshold:
 			logger.Error("HTTP request", logEntry...)
-		case status >= 400:
+		case status >= constants.LogLevelWarningThreshold:
 			logger.Warn("HTTP request", logEntry...)
 		default:
 			logger.Info("HTTP request", logEntry...)
@@ -316,7 +317,7 @@ func sanitizeQueryParams(query string) string {
 		"password", "secret", "key", "token", "auth", "api_key",
 		"jwt", "bearer", "credential", "private", "hash",
 	}
-	
+
 	// Simple sanitization - if any sensitive param is found, don't log query
 	queryLower := strings.ToLower(query)
 	for _, param := range sensitiveParams {
@@ -324,6 +325,6 @@ func sanitizeQueryParams(query string) string {
 			return "[REDACTED]"
 		}
 	}
-	
+
 	return query
 }

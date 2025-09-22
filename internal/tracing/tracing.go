@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"dev-utilities/internal/version"
+	"github.com/keyurgolani/DeveloperTools/internal/version"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -24,14 +23,14 @@ type Config struct {
 	ServiceName string `json:"serviceName"`
 	Environment string `json:"environment"`
 	Exporter    string `json:"exporter"` // "jaeger", "otlp", or "noop"
-	
+
 	// Jaeger configuration
 	JaegerEndpoint string `json:"jaegerEndpoint"`
-	
+
 	// OTLP configuration
-	OTLPEndpoint string `json:"otlpEndpoint"`
+	OTLPEndpoint string            `json:"otlpEndpoint"`
 	OTLPHeaders  map[string]string `json:"otlpHeaders"`
-	
+
 	// Sampling configuration
 	SampleRate float64 `json:"sampleRate"` // 0.0 to 1.0
 }
@@ -112,24 +111,19 @@ func New(config *Config) (*Tracer, error) {
 	}, nil
 }
 
-// createJaegerExporter creates a Jaeger exporter
+// createJaegerExporter is deprecated - use OTLP instead
 func createJaegerExporter(config *Config) (sdktrace.SpanExporter, error) {
-	endpoint := config.JaegerEndpoint
-	if endpoint == "" {
-		endpoint = "http://localhost:14268/api/traces"
-	}
-
-	return jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(endpoint)))
+	return nil, fmt.Errorf("jaeger exporter is deprecated, please use OTLP exporter instead")
 }
 
 // createOTLPExporter creates an OTLP HTTP exporter
 func createOTLPExporter(config *Config) (sdktrace.SpanExporter, error) {
 	opts := []otlptracehttp.Option{}
-	
+
 	if config.OTLPEndpoint != "" {
 		opts = append(opts, otlptracehttp.WithEndpoint(config.OTLPEndpoint))
 	}
-	
+
 	if len(config.OTLPHeaders) > 0 {
 		opts = append(opts, otlptracehttp.WithHeaders(config.OTLPHeaders))
 	}
@@ -138,7 +132,9 @@ func createOTLPExporter(config *Config) (sdktrace.SpanExporter, error) {
 }
 
 // StartSpan starts a new span with the given name and options
-func (t *Tracer) StartSpan(ctx context.Context, name string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+func (t *Tracer) StartSpan(
+	ctx context.Context, name string, opts ...trace.SpanStartOption,
+) (context.Context, trace.Span) {
 	return t.tracer.Start(ctx, name, opts...)
 }
 
@@ -301,7 +297,9 @@ func (t *Tracer) TraceFunction(ctx context.Context, name string, fn func(context
 
 // TraceFunctionWithResult wraps a function with tracing and returns a result
 // Note: Generic version removed for compatibility - use TraceFunctionWithInterface instead
-func (t *Tracer) TraceFunctionWithInterface(ctx context.Context, name string, fn func(context.Context) (interface{}, error)) (interface{}, error) {
+func (t *Tracer) TraceFunctionWithInterface(
+	ctx context.Context, name string, fn func(context.Context) (interface{}, error),
+) (interface{}, error) {
 	ctx, span := t.tracer.Start(ctx, name)
 	defer span.End()
 

@@ -23,10 +23,10 @@ type RateLimit struct {
 
 // RateLimitConfig holds rate limiting configuration
 type RateLimitConfig struct {
-	Store     string                `json:"store"`     // "memory" or "redis"
-	RedisURL  string                `json:"redisUrl"`  // Redis connection URL
-	Limits    map[string]RateLimit  `json:"limits"`    // Rate limits by operation type
-	Default   RateLimit             `json:"default"`   // Default rate limit
+	Store    string               `json:"store"`    // "memory" or "redis"
+	RedisURL string               `json:"redisUrl"` // Redis connection URL
+	Limits   map[string]RateLimit `json:"limits"`   // Rate limits by operation type
+	Default  RateLimit            `json:"default"`  // Default rate limit
 }
 
 // RateLimitStore interface defines the storage backend for rate limiting
@@ -77,6 +77,14 @@ func (tb *TokenBucket) Allow() bool {
 	}
 
 	return false
+}
+
+// SetLastRefillForTesting sets the lastRefill time for testing purposes
+// This method should only be used in tests
+func (tb *TokenBucket) SetLastRefillForTesting(t time.Time) {
+	tb.mutex.Lock()
+	defer tb.mutex.Unlock()
+	tb.lastRefill = t
 }
 
 // MemoryRateLimitStore implements in-memory rate limiting storage
@@ -131,10 +139,9 @@ func (m *MemoryRateLimitStore) cleanup() {
 	defer ticker.Stop()
 
 	for range ticker.C {
-		m.mutex.Lock()
-		// In a real implementation, we'd track last access time
-		// For now, we'll keep all buckets
-		m.mutex.Unlock()
+		// In a real implementation, we'd track last access time and clean up old buckets
+		// For now, we'll skip the cleanup as buckets are kept indefinitely
+		// TODO: Implement proper cleanup logic with last access tracking
 	}
 }
 
@@ -202,10 +209,10 @@ func (r *RedisRateLimitStore) Allow(ctx context.Context, key string, limit RateL
 		end
 	`
 
-	result, err := r.client.Eval(ctx, script, []string{key}, 
+	result, err := r.client.Eval(ctx, script, []string{key},
 		limit.BurstSize, limit.RequestsPerMinute, time.Now().Unix()).Result()
 	if err != nil {
-		return false, fmt.Errorf("Redis rate limit check failed: %w", err)
+		return false, fmt.Errorf("redis rate limit check failed: %w", err)
 	}
 
 	allowed, ok := result.(int64)
@@ -243,7 +250,7 @@ func NewRateLimitMiddleware(config *RateLimitConfig, logger *slog.Logger) (*Rate
 		store = NewMemoryRateLimitStore(logger)
 	case "redis":
 		if config.RedisURL == "" {
-			return nil, fmt.Errorf("Redis URL is required for Redis store")
+			return nil, fmt.Errorf("redis URL is required for Redis store")
 		}
 		store, err = NewRedisRateLimitStore(config.RedisURL, logger)
 		if err != nil {
@@ -265,16 +272,16 @@ func (m *RateLimitMiddleware) Limit() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Determine client identifier
 		clientID := m.getClientID(c)
-		
+
 		// Determine operation type for rate limiting
 		operationType := m.getOperationType(c)
-		
+
 		// Get rate limit for this operation
 		limit := m.getRateLimit(operationType)
-		
+
 		// Create rate limit key
 		key := fmt.Sprintf("rate_limit:%s:%s", clientID, operationType)
-		
+
 		// Check rate limit
 		ctx := c.Request.Context()
 		allowed, err := m.store.Allow(ctx, key, limit)
@@ -284,20 +291,20 @@ func (m *RateLimitMiddleware) Limit() gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		
+
 		if !allowed {
-			m.logger.Warn("Rate limit exceeded", 
-				"client_id", clientID, 
+			m.logger.Warn("Rate limit exceeded",
+				"client_id", clientID,
 				"operation", operationType,
 				"limit", limit.RequestsPerMinute,
 				"path", c.Request.URL.Path,
 			)
-			
+
 			// Add rate limit headers
 			c.Header("X-RateLimit-Limit", strconv.Itoa(limit.RequestsPerMinute))
 			c.Header("X-RateLimit-Remaining", "0")
 			c.Header("X-RateLimit-Reset", strconv.FormatInt(time.Now().Add(time.Minute).Unix(), 10))
-			
+
 			c.JSON(http.StatusTooManyRequests, gin.H{
 				"error": gin.H{
 					"code":    "RATE_LIMIT_EXCEEDED",
@@ -308,12 +315,12 @@ func (m *RateLimitMiddleware) Limit() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		
+
 		// Add rate limit headers for successful requests
 		c.Header("X-RateLimit-Limit", strconv.Itoa(limit.RequestsPerMinute))
 		// Note: Getting remaining count would require additional Redis call
 		// For now, we'll omit it to avoid performance impact
-		
+
 		c.Next()
 	}
 }
@@ -326,7 +333,7 @@ func (m *RateLimitMiddleware) getClientID(c *gin.Context) string {
 			return uid
 		}
 	}
-	
+
 	// Fall back to IP address for anonymous users
 	return c.ClientIP()
 }
@@ -334,7 +341,7 @@ func (m *RateLimitMiddleware) getClientID(c *gin.Context) string {
 // getOperationType determines the operation type for rate limiting
 func (m *RateLimitMiddleware) getOperationType(c *gin.Context) string {
 	path := c.Request.URL.Path
-	
+
 	// Define operation types based on path patterns
 	switch {
 	case strings.HasPrefix(path, "/api/v1/crypto/"):

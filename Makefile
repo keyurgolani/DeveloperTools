@@ -29,7 +29,7 @@ build:
 	BUILD_DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") && \
 	GIT_COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown") && \
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-		-ldflags="-w -s -extldflags '-static' -X 'dev-utilities/internal/version.Version=$$VERSION' -X 'dev-utilities/internal/version.BuildDate=$$BUILD_DATE' -X 'dev-utilities/internal/version.GitCommit=$$GIT_COMMIT'" \
+		-ldflags="-w -s -extldflags '-static' -X 'github.com/keyurgolani/DeveloperTools/internal/version.Version=$$VERSION' -X 'github.com/keyurgolani/DeveloperTools/internal/version.BuildDate=$$BUILD_DATE' -X 'github.com/keyurgolani/DeveloperTools/internal/version.GitCommit=$$GIT_COMMIT'" \
 		-o bin/$(BINARY_NAME) ./cmd/server
 	@echo "✅ Build complete: bin/$(BINARY_NAME)"
 
@@ -41,7 +41,7 @@ build-local:
 	BUILD_DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") && \
 	GIT_COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown") && \
 	go build \
-		-ldflags="-X 'dev-utilities/internal/version.Version=$$VERSION' -X 'dev-utilities/internal/version.BuildDate=$$BUILD_DATE' -X 'dev-utilities/internal/version.GitCommit=$$GIT_COMMIT'" \
+		-ldflags="-X 'github.com/keyurgolani/DeveloperTools/internal/version.Version=$$VERSION' -X 'github.com/keyurgolani/DeveloperTools/internal/version.BuildDate=$$BUILD_DATE' -X 'github.com/keyurgolani/DeveloperTools/internal/version.GitCommit=$$GIT_COMMIT'" \
 		-o bin/$(BINARY_NAME) ./cmd/server
 	@echo "✅ Local build complete: bin/$(BINARY_NAME)"
 
@@ -240,8 +240,44 @@ security-scan:
 	fi
 
 # Pre-commit checks (run before committing)
-pre-commit: clean deps fmt lint test-coverage validate-all security-scan
-	@echo "🎉 Pre-commit checks passed! Ready to commit."
+pre-commit:
+	@echo "🔍 Running comprehensive pre-commit checks..."
+	@./scripts/pre-commit-checks.sh
+
+# Quick fix common issues
+quick-fix:
+	@echo "🔧 Running quick fixes for common issues..."
+	@echo "=========================================="
+	@echo "🔧 Fixing Go code formatting..."
+	@gofmt -s -w . && echo "✅ Go code formatted" || echo "❌ Failed to format Go code"
+	@echo "🔧 Tidying Go modules..."
+	@go mod tidy && echo "✅ Go modules tidied" || echo "❌ Failed to tidy Go modules"
+	@echo "🔧 Checking for incorrect import paths..."
+	@if grep -r "dev-utilities/" --include="*.go" . 2>/dev/null | grep -v vendor/ >/dev/null; then \
+		echo "⚠️  Found incorrect import paths, auto-fixing..."; \
+		find . -name "*.go" -type f -not -path "./vendor/*" -exec sed -i '' 's|"dev-utilities/|"github.com/keyurgolani/DeveloperTools/|g' {} \; && \
+		echo "✅ Import paths fixed automatically"; \
+	else \
+		echo "✅ All import paths are correct"; \
+	fi
+	@echo "🔧 Cleaning up temporary files..."
+	@rm -f coverage.out coverage.html coverage.txt gosec-report.json validate-api server
+	@rm -rf bin/
+	@echo "✅ Temporary files cleaned"
+	@echo "🔧 Fixing script permissions..."
+	@chmod +x scripts/*.sh 2>/dev/null || true
+	@echo "✅ Script permissions fixed"
+	@echo ""
+	@echo "🎉 Quick fixes completed!"
+	@echo ""
+	@echo "💡 Next steps:"
+	@echo "   • Run 'make pre-commit' to validate fixes"
+	@echo "   • Run 'make test' to ensure tests still pass"
+	@echo "   • Run 'make lint' to check for any remaining issues"
+
+# Run comprehensive validation (using existing targets)
+validate-comprehensive: validate-all security-scan
+	@echo "🎉 Comprehensive validation completed!"
 
 # CI pipeline (comprehensive checks)
 ci: setup pre-commit integration-test docker-test e2e-test security-test
@@ -344,8 +380,10 @@ help:
 	@echo "  validate-openapi - Validate OpenAPI specification"
 	@echo "  validate-api     - Validate API implementation"
 	@echo "  validate-all     - Run all validations"
+	@echo "  validate-comprehensive - Run comprehensive validation suite"
 	@echo "  security-scan    - Run security scan"
 	@echo "  pre-commit       - Run pre-commit checks"
+	@echo "  quick-fix        - Auto-fix formatting, imports, and cleanup"
 	@echo "  ci               - Run full CI pipeline"
 	@echo ""
 	@echo "📚 Documentation:"

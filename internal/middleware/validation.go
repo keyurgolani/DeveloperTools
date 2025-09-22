@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net"
@@ -8,6 +9,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,29 +21,29 @@ const (
 
 // ValidationConfig holds validation configuration
 type ValidationConfig struct {
-	MaxBodySize         int64    `json:"maxBodySize"`
-	AllowedSchemes      []string `json:"allowedSchemes"`
-	BlockedCIDRs        []string `json:"blockedCidrs"`
-	BlockedDomains      []string `json:"blockedDomains"`
-	AllowPrivateIPs     bool     `json:"allowPrivateIps"`
-	AllowLoopbackIPs    bool     `json:"allowLoopbackIps"`
-	AllowLinkLocalIPs   bool     `json:"allowLinkLocalIps"`
-	AllowMulticastIPs   bool     `json:"allowMulticastIps"`
-	AllowBroadcastIPs   bool     `json:"allowBroadcastIps"`
+	MaxBodySize       int64    `json:"maxBodySize"`
+	AllowedSchemes    []string `json:"allowedSchemes"`
+	BlockedCIDRs      []string `json:"blockedCidrs"`
+	BlockedDomains    []string `json:"blockedDomains"`
+	AllowPrivateIPs   bool     `json:"allowPrivateIps"`
+	AllowLoopbackIPs  bool     `json:"allowLoopbackIps"`
+	AllowLinkLocalIPs bool     `json:"allowLinkLocalIps"`
+	AllowMulticastIPs bool     `json:"allowMulticastIps"`
+	AllowBroadcastIPs bool     `json:"allowBroadcastIps"`
 }
 
 // DefaultValidationConfig returns a secure default validation configuration
 func DefaultValidationConfig() *ValidationConfig {
 	return &ValidationConfig{
-		MaxBodySize:         MaxRequestBodySize,
-		AllowedSchemes:      []string{"http", "https"},
-		BlockedCIDRs:        []string{},
-		BlockedDomains:      []string{},
-		AllowPrivateIPs:     false,
-		AllowLoopbackIPs:    false,
-		AllowLinkLocalIPs:   false,
-		AllowMulticastIPs:   false,
-		AllowBroadcastIPs:   false,
+		MaxBodySize:       MaxRequestBodySize,
+		AllowedSchemes:    []string{"http", "https"},
+		BlockedCIDRs:      []string{},
+		BlockedDomains:    []string{},
+		AllowPrivateIPs:   false,
+		AllowLoopbackIPs:  false,
+		AllowLinkLocalIPs: false,
+		AllowMulticastIPs: false,
+		AllowBroadcastIPs: false,
 	}
 }
 
@@ -142,15 +144,19 @@ func (v *ValidationMiddleware) ValidateURL(urlStr string) error {
 	}
 
 	// Resolve hostname to IP addresses
-	ips, err := net.LookupIP(parsedURL.Hostname())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resolver := &net.Resolver{}
+	ips, err := resolver.LookupIPAddr(ctx, parsedURL.Hostname())
 	if err != nil {
 		return fmt.Errorf("failed to resolve hostname %s: %w", parsedURL.Hostname(), err)
 	}
 
 	// Validate each resolved IP
-	for _, ip := range ips {
-		if err := v.validateIP(ip); err != nil {
-			return fmt.Errorf("IP %s is not allowed: %w", ip.String(), err)
+	for _, ipAddr := range ips {
+		if err := v.validateIP(ipAddr.IP); err != nil {
+			return fmt.Errorf("IP %s is not allowed: %w", ipAddr.IP.String(), err)
 		}
 	}
 
@@ -267,27 +273,27 @@ func (v *ValidationMiddleware) isIPExplicitlyAllowed(ip net.IP) bool {
 	if ip.IsPrivate() && v.config.AllowPrivateIPs {
 		return true
 	}
-	
+
 	// Check if loopback IPs are allowed and this is a loopback IP
 	if ip.IsLoopback() && v.config.AllowLoopbackIPs {
 		return true
 	}
-	
+
 	// Check if link-local IPs are allowed and this is a link-local IP
 	if ip.IsLinkLocalUnicast() && v.config.AllowLinkLocalIPs {
 		return true
 	}
-	
+
 	// Check if multicast IPs are allowed and this is a multicast IP
 	if ip.IsMulticast() && v.config.AllowMulticastIPs {
 		return true
 	}
-	
+
 	// Check if broadcast IPs are allowed and this is a broadcast IP
 	if ip.To4() != nil && v.isBroadcastIP(ip) && v.config.AllowBroadcastIPs {
 		return true
 	}
-	
+
 	return false
 }
 
@@ -295,7 +301,7 @@ func (v *ValidationMiddleware) isIPExplicitlyAllowed(ip net.IP) bool {
 func (v *ValidationMiddleware) sanitizeString(input string) string {
 	// Remove null bytes
 	input = strings.ReplaceAll(input, "\x00", "")
-	
+
 	// Remove control characters except tab, newline, and carriage return
 	var result strings.Builder
 	for _, r := range input {
@@ -303,7 +309,7 @@ func (v *ValidationMiddleware) sanitizeString(input string) string {
 			result.WriteRune(r)
 		}
 	}
-	
+
 	return result.String()
 }
 
@@ -356,7 +362,7 @@ func (v *ValidationMiddleware) ValidateRegex(pattern string) error {
 
 	// Check for potentially dangerous patterns
 	dangerousPatterns := []string{
-		`\(\?\#`,     // Comments can be used for injection
+		`\(\?\#`,       // Comments can be used for injection
 		`\(\?\:.*\)\+`, // Nested quantifiers can cause ReDoS
 		`\(\?\=.*\)\*`, // Lookaheads with quantifiers
 		`\(\?\!.*\)\+`, // Negative lookaheads with quantifiers

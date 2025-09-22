@@ -3,55 +3,70 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 
-	"dev-utilities/internal/config"
-	"dev-utilities/internal/logging"
-	"dev-utilities/internal/server"
-	"dev-utilities/internal/validation"
+	"github.com/keyurgolani/DeveloperTools/internal/config"
+	"github.com/keyurgolani/DeveloperTools/internal/constants"
+	"github.com/keyurgolani/DeveloperTools/internal/logging"
+	"github.com/keyurgolani/DeveloperTools/internal/server"
+	"github.com/keyurgolani/DeveloperTools/internal/validation"
 )
 
 func main() {
-	var (
-		specPath = flag.String("spec", "api/openapi.yml", "Path to OpenAPI specification file")
-		verbose  = flag.Bool("verbose", false, "Enable verbose output")
-	)
-	flag.Parse()
+	specPath, verbose := parseFlags()
+	printHeader()
 
+	cfg := createConfig(*verbose)
+	logger := logging.New(cfg.Log.Level)
+	srv := server.New(cfg, logger)
+
+	validator := createValidator(*specPath, srv)
+	loadSpecification(validator, *specPath)
+
+	runValidation(validator)
+}
+
+func parseFlags() (*string, *bool) {
+	specPath := flag.String("spec", "api/openapi.yml", "Path to OpenAPI specification file")
+	verbose := flag.Bool("verbose", false, "Enable verbose output")
+	flag.Parse()
+	return specPath, verbose
+}
+
+func printHeader() {
 	fmt.Println("🔍 API Validation Tool")
 	fmt.Println("======================")
+}
 
-	// Load configuration
+func createConfig(verbose bool) *config.Config {
 	cfg := &config.Config{
 		Server: config.ServerConfig{
-			Port: 8080,
+			Port: constants.DefaultPort,
 		},
 		Log: config.LogConfig{
 			Level: "info",
 		},
 	}
 
-	if *verbose {
+	if verbose {
 		cfg.Log.Level = "debug"
 	}
 
-	// Create logger
-	logger := logging.New(cfg.Log.Level)
+	return cfg
+}
 
-	// Create server instance
-	srv := server.New(cfg, logger)
-
-	// Create API validator
-	validator, err := validation.NewAPIValidator(*specPath, srv.GetRouter())
+func createValidator(specPath string, srv *server.Server) *validation.APIValidator {
+	validator, err := validation.NewAPIValidator(specPath, srv.GetRouter())
 	if err != nil {
 		fmt.Printf("❌ Failed to create validator: %v\n", err)
 		os.Exit(1)
 	}
+	return validator
+}
 
-	// Load OpenAPI specification
-	if _, err := os.Stat(*specPath); err == nil {
-		specData, err := ioutil.ReadFile(*specPath)
+func loadSpecification(validator *validation.APIValidator, specPath string) {
+	if _, err := os.Stat(specPath); err == nil {
+		specData, err := os.ReadFile(specPath)
 		if err != nil {
 			fmt.Printf("❌ Failed to read spec file: %v\n", err)
 			os.Exit(1)
@@ -62,20 +77,19 @@ func main() {
 			os.Exit(1)
 		}
 
-		fmt.Printf("✅ Loaded OpenAPI specification from: %s\n", *specPath)
+		fmt.Printf("✅ Loaded OpenAPI specification from: %s\n", specPath)
 	} else {
-		fmt.Printf("⚠️  OpenAPI specification not found at: %s\n", *specPath)
+		fmt.Printf("⚠️  OpenAPI specification not found at: %s\n", specPath)
 		fmt.Println("   Proceeding with basic validation...")
 	}
+}
 
-	// Generate validation report
+func runValidation(validator *validation.APIValidator) {
 	fmt.Println("\n🔍 Running API validation...")
 	report := validator.GenerateValidationReport()
 
-	// Print detailed report
 	validation.PrintValidationReport(report)
 
-	// Exit with appropriate code
 	if validation.IsValidationPassing(report) {
 		fmt.Println("\n🎉 API validation completed successfully!")
 		os.Exit(0)
