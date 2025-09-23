@@ -14,30 +14,34 @@ const (
 	MaxNanoIDCount = 1000
 	// MaxNanoIDSize is the maximum size for a Nano ID.
 	MaxNanoIDSize = 50
-	// DefaultNanoIDSize is the default size for Nano IDs
+	// DefaultNanoIDSize is the default size for Nano IDs.
 	DefaultNanoIDSize = 21
-	// DefaultCount is the default count when not specified
+	// DefaultCount is the default count when not specified.
 	DefaultCount = 1
+	// UUIDVersion1 represents UUID version 1.
+	UUIDVersion1 = 1
+	// UUIDVersion4 represents UUID version 4.
+	UUIDVersion4 = 4
 )
 
-// IDService defines the interface for ID generation operations
+// IDService defines the interface for ID generation operations.
 type IDService interface {
 	GenerateUUID(version, count int) ([]string, error)
 	GenerateNanoID(size, count int) ([]string, error)
 }
 
-// Service implements the IDService interface
+// Service implements the IDService interface.
 type Service struct{}
 
-// NewService creates a new ID service instance
+// NewService creates a new ID service instance.
 func NewService() IDService {
 	return &Service{}
 }
 
-// GenerateUUID generates UUIDs of the specified version and count
+// GenerateUUID generates UUIDs of the specified version and count.
 func (s *Service) GenerateUUID(version, count int) ([]string, error) {
 	// Validate version
-	if version != 1 && version != 4 {
+	if version != UUIDVersion1 && version != UUIDVersion4 {
 		return nil, fmt.Errorf("unsupported UUID version: %d, only versions 1 and 4 are supported", version)
 	}
 
@@ -58,9 +62,9 @@ func (s *Service) GenerateUUID(version, count int) ([]string, error) {
 		var err error
 
 		switch version {
-		case 1:
+		case UUIDVersion1:
 			u, err = uuid.NewUUID()
-		case 4:
+		case UUIDVersion4:
 			u, err = uuid.NewRandom()
 		}
 
@@ -74,7 +78,7 @@ func (s *Service) GenerateUUID(version, count int) ([]string, error) {
 	return uuids, nil
 }
 
-// GenerateNanoID generates Nano IDs with the specified size and count
+// GenerateNanoID generates Nano IDs with the specified size and count.
 func (s *Service) GenerateNanoID(size, count int) ([]string, error) {
 	// Set default size if not specified
 	if size <= 0 {

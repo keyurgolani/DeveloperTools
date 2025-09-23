@@ -101,7 +101,8 @@ func TestRecordTransformOperation(t *testing.T) {
 	metricsInstance.RecordTransformOperation("encode", "base64", "success")
 
 	// Verify the counter was incremented
-	counter := testutil.ToFloat64(metricsInstance.TransformOperationsTotal().WithLabelValues("encode", "base64", "success"))
+	counter := testutil.ToFloat64(metricsInstance.TransformOperationsTotal().WithLabelValues(
+		"encode", "base64", "success"))
 	assert.Equal(t, float64(1), counter)
 }
 
@@ -306,26 +307,38 @@ func TestMetricsIntegration(t *testing.T) {
 	metricsInstance.SetActiveConnections(10)
 
 	// Verify all metrics were recorded correctly
-	assert.Equal(t, float64(2), testutil.ToFloat64(metricsInstance.CryptoOperationsTotal().WithLabelValues("hash", "sha256", "success")))
-	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.CryptoOperationsTotal().WithLabelValues("hash", "md5", "success")))
-	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.CryptoOperationsTotal().WithLabelValues("hmac", "sha256", "error")))
+	assert.Equal(t, float64(2), testutil.ToFloat64(metricsInstance.CryptoOperationsTotal().WithLabelValues(
+		"hash", "sha256", "success")))
+	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.CryptoOperationsTotal().WithLabelValues(
+		"hash", "md5", "success")))
+	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.CryptoOperationsTotal().WithLabelValues(
+		"hmac", "sha256", "error")))
 
-	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.TextOperationsTotal().WithLabelValues("case_convert", "success")))
-	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.TextOperationsTotal().WithLabelValues("analyze", "success")))
+	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.TextOperationsTotal().WithLabelValues(
+		"case_convert", "success")))
+	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.TextOperationsTotal().WithLabelValues(
+		"analyze", "success")))
 
-	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.TransformOperationsTotal().WithLabelValues("encode", "base64", "success")))
-	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.TransformOperationsTotal().WithLabelValues("decode", "jwt", "error")))
+	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.TransformOperationsTotal().WithLabelValues(
+		"encode", "base64", "success")))
+	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.TransformOperationsTotal().WithLabelValues(
+		"decode", "jwt", "error")))
 
-	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.IDOperationsTotal().WithLabelValues("generate", "uuid", "success")))
-	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.TimeOperationsTotal().WithLabelValues("convert", "success")))
-	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.NetworkOperationsTotal().WithLabelValues("dns_lookup", "success")))
+	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.IDOperationsTotal().WithLabelValues(
+		"generate", "uuid", "success")))
+	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.TimeOperationsTotal().WithLabelValues(
+		"convert", "success")))
+	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.NetworkOperationsTotal().WithLabelValues(
+		"dns_lookup", "success")))
 
-	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.ErrorsTotal().WithLabelValues("validation_error", "crypto")))
-	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.RateLimitHitsTotal().WithLabelValues("anonymous", "crypto")))
+	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.ErrorsTotal().WithLabelValues(
+		"validation_error", "crypto")))
+	assert.Equal(t, float64(1), testutil.ToFloat64(metricsInstance.RateLimitHitsTotal().WithLabelValues(
+		"anonymous", "crypto")))
 	assert.Equal(t, float64(10), testutil.ToFloat64(metricsInstance.ActiveConnections()))
 }
 
-// Benchmark tests
+// Benchmark tests.
 func BenchmarkRecordHTTPRequest(b *testing.B) {
 	registry := prometheus.NewRegistry()
 	metricsInstance := metrics.NewWithRegistry(registry)

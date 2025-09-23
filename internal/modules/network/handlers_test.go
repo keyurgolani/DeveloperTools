@@ -127,7 +127,10 @@ func executeInvalidURLParseTest(t *testing.T, router *gin.Engine, mockService *M
 	mockService.AssertExpectations(t)
 }
 
-func executeURLOperationRequest(t *testing.T, router *gin.Engine, reqBody network.URLOperationRequest) *httptest.ResponseRecorder {
+//nolint:unparam // t parameter is for consistency with other test helper functions
+func executeURLOperationRequest(
+	t *testing.T, router *gin.Engine, reqBody network.URLOperationRequest,
+) *httptest.ResponseRecorder {
 	jsonBody, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest("POST", "/api/web/url", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")

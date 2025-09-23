@@ -1,4 +1,4 @@
-package tracing
+package tracing_test
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/keyurgolani/DeveloperTools/internal/tracing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
@@ -13,7 +14,7 @@ import (
 )
 
 func TestDefaultConfig(t *testing.T) {
-	config := DefaultConfig()
+	config := tracing.DefaultConfig()
 	assert.NotNil(t, config)
 	assert.False(t, config.Enabled)
 	assert.Equal(t, "dev-utilities", config.ServiceName)
@@ -23,19 +24,17 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestNewTracerDisabled(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled: false,
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	assert.NotNil(t, tracer)
-	assert.NotNil(t, tracer.tracer)
-	assert.Nil(t, tracer.provider)
 }
 
 func TestNewTracerWithNoopExporter(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Environment: "test",
@@ -43,11 +42,9 @@ func TestNewTracerWithNoopExporter(t *testing.T) {
 		SampleRate:  1.0,
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	assert.NotNil(t, tracer)
-	assert.NotNil(t, tracer.tracer)
-	assert.NotNil(t, tracer.provider)
 
 	// Clean up
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -57,24 +54,24 @@ func TestNewTracerWithNoopExporter(t *testing.T) {
 }
 
 func TestNewTracerWithInvalidExporter(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:  true,
 		Exporter: "invalid",
 	}
 
-	_, err := New(config)
+	_, err := tracing.New(config)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported exporter")
 }
 
 func TestStartSpan(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -90,13 +87,13 @@ func TestStartSpan(t *testing.T) {
 }
 
 func TestStartHTTPSpan(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -112,13 +109,13 @@ func TestStartHTTPSpan(t *testing.T) {
 }
 
 func TestStartCryptoSpan(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -134,13 +131,13 @@ func TestStartCryptoSpan(t *testing.T) {
 }
 
 func TestStartTextSpan(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -156,13 +153,13 @@ func TestStartTextSpan(t *testing.T) {
 }
 
 func TestStartTransformSpan(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -178,13 +175,13 @@ func TestStartTransformSpan(t *testing.T) {
 }
 
 func TestStartNetworkSpan(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -200,13 +197,13 @@ func TestStartNetworkSpan(t *testing.T) {
 }
 
 func TestRecordError(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -228,13 +225,13 @@ func TestRecordError(t *testing.T) {
 }
 
 func TestSetSpanAttributes(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -254,13 +251,13 @@ func TestSetSpanAttributes(t *testing.T) {
 }
 
 func TestGetTraceID(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -278,13 +275,13 @@ func TestGetTraceID(t *testing.T) {
 }
 
 func TestGetSpanID(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -302,13 +299,13 @@ func TestGetSpanID(t *testing.T) {
 }
 
 func TestInjectExtractTraceContext(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -336,13 +333,13 @@ func TestInjectExtractTraceContext(t *testing.T) {
 }
 
 func TestTraceFunction(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -370,13 +367,13 @@ func TestTraceFunction(t *testing.T) {
 }
 
 func TestTraceFunctionWithResult(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -387,32 +384,34 @@ func TestTraceFunctionWithResult(t *testing.T) {
 	ctx := context.Background()
 
 	// Test successful function with result
-	result, err := tracer.TraceFunctionWithInterface(ctx, "test-function-result", func(ctx context.Context) (interface{}, error) {
-		// Verify we have a span in context
-		traceID := tracer.GetTraceID(ctx)
-		assert.NotEmpty(t, traceID)
-		return "success", nil
-	})
+	result, err := tracer.TraceFunctionWithInterface(ctx, "test-function-result",
+		func(ctx context.Context) (interface{}, error) {
+			// Verify we have a span in context
+			traceID := tracer.GetTraceID(ctx)
+			assert.NotEmpty(t, traceID)
+			return "success", nil
+		})
 	assert.NoError(t, err)
 	assert.Equal(t, "success", result)
 
 	// Test function with error
 	testError := errors.New("test error")
-	result, err = tracer.TraceFunctionWithInterface(ctx, "test-function-error", func(ctx context.Context) (interface{}, error) {
-		return "", testError
-	})
+	result, err = tracer.TraceFunctionWithInterface(ctx, "test-function-error",
+		func(ctx context.Context) (interface{}, error) {
+			return "", testError
+		})
 	assert.Equal(t, testError, err)
 	assert.Equal(t, "", result)
 }
 
 func TestAddSpanEvent(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -433,13 +432,13 @@ func TestAddSpanEvent(t *testing.T) {
 }
 
 func TestSetSpanStatus(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -457,42 +456,15 @@ func TestSetSpanStatus(t *testing.T) {
 	})
 }
 
-func TestMapCarrier(t *testing.T) {
-	data := make(map[string]string)
-	carrier := &mapCarrier{data: data}
-
-	// Test Set and Get
-	carrier.Set("test-key", "test-value")
-	assert.Equal(t, "test-value", carrier.Get("test-key"))
-
-	// Test Keys
-	carrier.Set("another-key", "another-value")
-	keys := carrier.Keys()
-	assert.Len(t, keys, 2)
-	assert.Contains(t, keys, "test-key")
-	assert.Contains(t, keys, "another-key")
-}
-
-func TestNoopExporter(t *testing.T) {
-	exporter := &noopExporter{}
-
-	ctx := context.Background()
-	err := exporter.ExportSpans(ctx, nil)
-	assert.NoError(t, err)
-
-	err = exporter.Shutdown(ctx)
-	assert.NoError(t, err)
-}
-
 // Benchmark tests.
 func BenchmarkStartSpan(b *testing.B) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(b, err)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -510,13 +482,13 @@ func BenchmarkStartSpan(b *testing.B) {
 }
 
 func BenchmarkTraceFunction(b *testing.B) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(b, err)
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

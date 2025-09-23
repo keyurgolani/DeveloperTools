@@ -30,7 +30,7 @@ func ErrorHandlerMiddleware(logger *logging.Logger) gin.HandlerFunc {
 	})
 }
 
-// ErrorResponseMiddleware handles errors that were added to the Gin context
+// ErrorResponseMiddleware handles errors that were added to the Gin context.
 func ErrorResponseMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
@@ -53,7 +53,7 @@ func ErrorResponseMiddleware() gin.HandlerFunc {
 	}
 }
 
-// NotFoundHandler handles 404 errors
+// NotFoundHandler handles 404 errors.
 func NotFoundHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		apiError := &apierror.APIError{
@@ -65,7 +65,7 @@ func NotFoundHandler() gin.HandlerFunc {
 	}
 }
 
-// MethodNotAllowedHandler handles 405 errors
+// MethodNotAllowedHandler handles 405 errors.
 func MethodNotAllowedHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		apiError := &apierror.APIError{

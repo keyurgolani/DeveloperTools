@@ -257,7 +257,9 @@ func TestTransformService_URLDecode(t *testing.T) {
 
 func TestTransformService_DecodeJWT(t *testing.T) {
 	service := NewTransformService()
-	validToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c" // #nosec G101 - test token only //nolint:lll
+	// #nosec G101 - test token only
+	validToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0Ijox" +
+		"NTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 	tests := getJWTDecodeTestCases(validToken)
 
 	for _, tt := range tests {

@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+const (
+	// defaultHTTPTimeout is the default timeout for HTTP operations.
+	defaultHTTPTimeout = 5 * time.Second
+)
+
 // NetworkService defines the interface for network operations.
 type NetworkService interface {
 	ParseURL(urlStr string) (*URLParts, error)
@@ -34,7 +39,7 @@ func NewNetworkService() NetworkService {
 func NewNetworkServiceWithOptions(disableSSRFProtection bool) NetworkService {
 	// Create HTTP client with timeout and disabled redirects
 	client := &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout: defaultHTTPTimeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse // Disable redirects
 		},
@@ -166,7 +171,7 @@ func (s *networkService) GetHeaders(urlStr string) (*HeadersResponse, error) {
 	return response, nil
 }
 
-// validateURL implements SSRF protection by checking if URL points to private/reserved IP ranges
+// validateURL implements SSRF protection by checking if URL points to private/reserved IP ranges.
 func (s *networkService) validateURL(urlStr string) error {
 	parsedURL, err := url.Parse(urlStr)
 	if err != nil {
@@ -184,7 +189,7 @@ func (s *networkService) validateURL(urlStr string) error {
 	}
 
 	// Resolve hostname to IP addresses
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultHTTPTimeout)
 	defer cancel()
 
 	resolver := &net.Resolver{}
@@ -203,7 +208,7 @@ func (s *networkService) validateURL(urlStr string) error {
 	return nil
 }
 
-// isPrivateOrReservedIP checks if an IP address is private or reserved
+// isPrivateOrReservedIP checks if an IP address is private or reserved.
 func (s *networkService) isPrivateOrReservedIP(ip net.IP) bool {
 	// Define blocked CIDR ranges
 	blockedRanges := []string{
@@ -230,7 +235,7 @@ func (s *networkService) isPrivateOrReservedIP(ip net.IP) bool {
 	return false
 }
 
-// DNSLookup performs DNS resolution for various record types
+// DNSLookup performs DNS resolution for various record types.
 func (s *networkService) DNSLookup(domain, recordType string) (*DNSLookupResponse, error) {
 	recordTypeUpper := strings.ToUpper(recordType)
 
@@ -247,7 +252,7 @@ func (s *networkService) DNSLookup(domain, recordType string) (*DNSLookupRespons
 	}, nil
 }
 
-// performDNSLookup performs the actual DNS lookup based on record type
+// performDNSLookup performs the actual DNS lookup based on record type.
 func (s *networkService) performDNSLookup(domain, recordType string) ([]string, error) {
 	switch recordType {
 	case "A":
@@ -267,9 +272,9 @@ func (s *networkService) performDNSLookup(domain, recordType string) ([]string, 
 	}
 }
 
-// lookupARecords performs A record lookup (IPv4)
+// lookupARecords performs A record lookup (IPv4).
 func (s *networkService) lookupARecords(domain string) ([]string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultHTTPTimeout)
 	defer cancel()
 
 	resolver := &net.Resolver{}
@@ -287,9 +292,9 @@ func (s *networkService) lookupARecords(domain string) ([]string, error) {
 	return records, nil
 }
 
-// lookupAAAARecords performs AAAA record lookup (IPv6)
+// lookupAAAARecords performs AAAA record lookup (IPv6).
 func (s *networkService) lookupAAAARecords(domain string) ([]string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultHTTPTimeout)
 	defer cancel()
 
 	resolver := &net.Resolver{}
@@ -307,9 +312,9 @@ func (s *networkService) lookupAAAARecords(domain string) ([]string, error) {
 	return records, nil
 }
 
-// lookupMXRecords performs MX record lookup
+// lookupMXRecords performs MX record lookup.
 func (s *networkService) lookupMXRecords(domain string) ([]string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultHTTPTimeout)
 	defer cancel()
 
 	resolver := &net.Resolver{}
@@ -325,18 +330,18 @@ func (s *networkService) lookupMXRecords(domain string) ([]string, error) {
 	return records, nil
 }
 
-// lookupTXTRecords performs TXT record lookup
+// lookupTXTRecords performs TXT record lookup.
 func (s *networkService) lookupTXTRecords(domain string) ([]string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultHTTPTimeout)
 	defer cancel()
 
 	resolver := &net.Resolver{}
 	return resolver.LookupTXT(ctx, domain)
 }
 
-// lookupNSRecords performs NS record lookup
+// lookupNSRecords performs NS record lookup.
 func (s *networkService) lookupNSRecords(domain string) ([]string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultHTTPTimeout)
 	defer cancel()
 
 	resolver := &net.Resolver{}
@@ -352,9 +357,9 @@ func (s *networkService) lookupNSRecords(domain string) ([]string, error) {
 	return records, nil
 }
 
-// lookupCNAMERecord performs CNAME record lookup
+// lookupCNAMERecord performs CNAME record lookup.
 func (s *networkService) lookupCNAMERecord(domain string) ([]string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultHTTPTimeout)
 	defer cancel()
 
 	resolver := &net.Resolver{}
@@ -365,7 +370,7 @@ func (s *networkService) lookupCNAMERecord(domain string) ([]string, error) {
 	return []string{cname}, nil
 }
 
-// AnalyzeIP validates and classifies an IP address
+// AnalyzeIP validates and classifies an IP address.
 func (s *networkService) AnalyzeIP(ipStr string) (*IPInfo, error) {
 	ip := net.ParseIP(ipStr)
 	if ip == nil {
@@ -391,7 +396,7 @@ func (s *networkService) AnalyzeIP(ipStr string) (*IPInfo, error) {
 	return info, nil
 }
 
-// isPrivateIP checks if an IP address is in private ranges (excluding loopback)
+// isPrivateIP checks if an IP address is in private ranges (excluding loopback).
 func (s *networkService) isPrivateIP(ip net.IP) bool {
 	// Define private CIDR ranges (excluding loopback)
 	privateRanges := []string{

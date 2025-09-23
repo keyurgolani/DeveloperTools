@@ -180,7 +180,9 @@ func TestHandler_URL(t *testing.T) {
 
 func TestHandler_JWTDecode(t *testing.T) {
 	router := setupTestRouter()
-	validToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c" // #nosec G101 - test token only //nolint:lll
+	// #nosec G101 - test token only
+	validToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0Ijox" +
+		"NTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 
 	tests := getJWTHandlerTestCases(validToken)
 
@@ -380,10 +382,10 @@ func TestHandler_InvalidJSON(t *testing.T) {
 	}
 }
 
-// Helper function to execute Base64 transform tests.
-func executeBase64Tests(t *testing.T, router *gin.Engine, tests []struct {
+// Generic helper function to execute transform tests.
+func executeTransformTests(t *testing.T, router *gin.Engine, endpoint string, tests []struct {
 	name           string
-	request        Base64Request
+	request        interface{}
 	expectedStatus int
 	expectedResult string
 	expectError    bool
@@ -391,7 +393,7 @@ func executeBase64Tests(t *testing.T, router *gin.Engine, tests []struct {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			body, _ := json.Marshal(tt.request)
-			req := httptest.NewRequest(http.MethodPost, "/api/v1/transform/base64", bytes.NewBuffer(body))
+			req := httptest.NewRequest(http.MethodPost, endpoint, bytes.NewBuffer(body))
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
@@ -415,6 +417,41 @@ func executeBase64Tests(t *testing.T, router *gin.Engine, tests []struct {
 	}
 }
 
+// Helper function to execute Base64 transform tests.
+func executeBase64Tests(t *testing.T, router *gin.Engine, tests []struct {
+	name           string
+	request        Base64Request
+	expectedStatus int
+	expectedResult string
+	expectError    bool
+}) {
+	var genericTests []struct {
+		name           string
+		request        interface{}
+		expectedStatus int
+		expectedResult string
+		expectError    bool
+	}
+
+	for _, test := range tests {
+		genericTests = append(genericTests, struct {
+			name           string
+			request        interface{}
+			expectedStatus int
+			expectedResult string
+			expectError    bool
+		}{
+			name:           test.name,
+			request:        test.request,
+			expectedStatus: test.expectedStatus,
+			expectedResult: test.expectedResult,
+			expectError:    test.expectError,
+		})
+	}
+
+	executeTransformTests(t, router, "/api/v1/transform/base64", genericTests)
+}
+
 // Helper function to execute URL transform tests.
 func executeURLTests(t *testing.T, router *gin.Engine, tests []struct {
 	name           string
@@ -423,29 +460,29 @@ func executeURLTests(t *testing.T, router *gin.Engine, tests []struct {
 	expectedResult string
 	expectError    bool
 }) {
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			body, _ := json.Marshal(tt.request)
-			req := httptest.NewRequest(http.MethodPost, "/api/v1/transform/url", bytes.NewBuffer(body))
-			req.Header.Set("Content-Type", "application/json")
+	var genericTests []struct {
+		name           string
+		request        interface{}
+		expectedStatus int
+		expectedResult string
+		expectError    bool
+	}
 
-			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-
-			var response map[string]interface{}
-			err := json.Unmarshal(w.Body.Bytes(), &response)
-			require.NoError(t, err)
-
-			if tt.expectError {
-				assert.False(t, response["success"].(bool))
-				assert.NotNil(t, response["error"])
-			} else {
-				assert.True(t, response["success"].(bool))
-				data := response["data"].(map[string]interface{})
-				assert.Equal(t, tt.expectedResult, data["result"])
-			}
+	for _, test := range tests {
+		genericTests = append(genericTests, struct {
+			name           string
+			request        interface{}
+			expectedStatus int
+			expectedResult string
+			expectError    bool
+		}{
+			name:           test.name,
+			request:        test.request,
+			expectedStatus: test.expectedStatus,
+			expectedResult: test.expectedResult,
+			expectError:    test.expectError,
 		})
 	}
+
+	executeTransformTests(t, router, "/api/v1/transform/url", genericTests)
 }

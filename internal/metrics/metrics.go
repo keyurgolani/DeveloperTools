@@ -10,6 +10,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+const (
+	// HTTP status code thresholds.
+	httpClientErrorThreshold = 400
+	httpServerErrorThreshold = 500
+)
+
 // Metrics holds all Prometheus metrics for the application.
 type Metrics struct {
 	// Registry for metrics
@@ -259,9 +265,9 @@ func (m *Metrics) MetricsMiddleware() gin.HandlerFunc {
 		m.RecordHTTPRequest(method, path, statusCode, duration, requestSize, responseSize)
 
 		// Record errors if status code indicates an error
-		if statusCode >= 400 {
+		if statusCode >= httpClientErrorThreshold {
 			errorType := "client_error"
-			if statusCode >= 500 {
+			if statusCode >= httpServerErrorThreshold {
 				errorType = "server_error"
 			}
 			m.RecordError(errorType, "http")

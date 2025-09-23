@@ -15,11 +15,13 @@ import (
 )
 
 const (
-	// MaxRequestBodySize is the maximum allowed request body size (1MB)
+	// MaxRequestBodySize is the maximum allowed request body size (1MB).
 	MaxRequestBodySize = 1024 * 1024 // 1MB
+	// MaxRegexPatternLength is the maximum allowed regex pattern length.
+	MaxRegexPatternLength = 1000
 )
 
-// ValidationConfig holds validation configuration
+// ValidationConfig holds validation configuration.
 type ValidationConfig struct {
 	MaxBodySize       int64    `json:"maxBodySize"`
 	AllowedSchemes    []string `json:"allowedSchemes"`
@@ -32,7 +34,7 @@ type ValidationConfig struct {
 	AllowBroadcastIPs bool     `json:"allowBroadcastIps"`
 }
 
-// DefaultValidationConfig returns a secure default validation configuration
+// DefaultValidationConfig returns a secure default validation configuration.
 func DefaultValidationConfig() *ValidationConfig {
 	return &ValidationConfig{
 		MaxBodySize:       MaxRequestBodySize,
@@ -47,14 +49,14 @@ func DefaultValidationConfig() *ValidationConfig {
 	}
 }
 
-// ValidationMiddleware provides input validation and SSRF protection
+// ValidationMiddleware provides input validation and SSRF protection.
 type ValidationMiddleware struct {
 	config      *ValidationConfig
 	logger      *slog.Logger
 	blockedNets []*net.IPNet
 }
 
-// NewValidationMiddleware creates a new validation middleware
+// NewValidationMiddleware creates a new validation middleware.
 func NewValidationMiddleware(config *ValidationConfig, logger *slog.Logger) (*ValidationMiddleware, error) {
 	if config == nil {
 		config = DefaultValidationConfig()
@@ -77,7 +79,7 @@ func NewValidationMiddleware(config *ValidationConfig, logger *slog.Logger) (*Va
 	return middleware, nil
 }
 
-// LimitRequestSize returns middleware that limits request body size
+// LimitRequestSize returns middleware that limits request body size.
 func (v *ValidationMiddleware) LimitRequestSize() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request.ContentLength > v.config.MaxBodySize {
@@ -105,7 +107,7 @@ func (v *ValidationMiddleware) LimitRequestSize() gin.HandlerFunc {
 	}
 }
 
-// SanitizeInput returns middleware that sanitizes common input fields
+// SanitizeInput returns middleware that sanitizes common input fields.
 func (v *ValidationMiddleware) SanitizeInput() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Sanitize query parameters
@@ -121,7 +123,7 @@ func (v *ValidationMiddleware) SanitizeInput() gin.HandlerFunc {
 	}
 }
 
-// ValidateURL validates a URL for SSRF protection
+// ValidateURL validates a URL for SSRF protection.
 func (v *ValidationMiddleware) ValidateURL(urlStr string) error {
 	if urlStr == "" {
 		return fmt.Errorf("URL cannot be empty")
@@ -144,7 +146,8 @@ func (v *ValidationMiddleware) ValidateURL(urlStr string) error {
 	}
 
 	// Resolve hostname to IP addresses
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	const resolveTimeout = 5 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), resolveTimeout)
 	defer cancel()
 
 	resolver := &net.Resolver{}
@@ -163,7 +166,7 @@ func (v *ValidationMiddleware) ValidateURL(urlStr string) error {
 	return nil
 }
 
-// validateIP checks if an IP address is allowed
+// validateIP checks if an IP address is allowed.
 func (v *ValidationMiddleware) validateIP(ip net.IP) error {
 	// Check against explicitly blocked networks
 	for _, network := range v.blockedNets {
@@ -202,7 +205,7 @@ func (v *ValidationMiddleware) validateIP(ip net.IP) error {
 	return nil
 }
 
-// isAllowedScheme checks if a URL scheme is allowed
+// isAllowedScheme checks if a URL scheme is allowed.
 func (v *ValidationMiddleware) isAllowedScheme(scheme string) bool {
 	scheme = strings.ToLower(scheme)
 	for _, allowed := range v.config.AllowedSchemes {
@@ -213,7 +216,7 @@ func (v *ValidationMiddleware) isAllowedScheme(scheme string) bool {
 	return false
 }
 
-// isDomainBlocked checks if a domain is in the blocked list
+// isDomainBlocked checks if a domain is in the blocked list.
 func (v *ValidationMiddleware) isDomainBlocked(domain string) bool {
 	domain = strings.ToLower(domain)
 	for _, blocked := range v.config.BlockedDomains {
@@ -224,7 +227,7 @@ func (v *ValidationMiddleware) isDomainBlocked(domain string) bool {
 	return false
 }
 
-// isBroadcastIP checks if an IPv4 address is a broadcast address
+// isBroadcastIP checks if an IPv4 address is a broadcast address.
 func (v *ValidationMiddleware) isBroadcastIP(ip net.IP) bool {
 	if ip4 := ip.To4(); ip4 != nil {
 		// Check for limited broadcast (255.255.255.255)
@@ -236,7 +239,7 @@ func (v *ValidationMiddleware) isBroadcastIP(ip net.IP) bool {
 	return false
 }
 
-// isDangerousIP checks for well-known dangerous IP ranges
+// isDangerousIP checks for well-known dangerous IP ranges.
 func (v *ValidationMiddleware) isDangerousIP(ip net.IP) bool {
 	dangerousRanges := []string{
 		"169.254.169.254/32", // AWS/GCP/Azure metadata
@@ -267,7 +270,7 @@ func (v *ValidationMiddleware) isDangerousIP(ip net.IP) bool {
 	return false
 }
 
-// isIPExplicitlyAllowed checks if an IP is explicitly allowed by configuration
+// isIPExplicitlyAllowed checks if an IP is explicitly allowed by configuration.
 func (v *ValidationMiddleware) isIPExplicitlyAllowed(ip net.IP) bool {
 	// Check if private IPs are allowed and this is a private IP
 	if ip.IsPrivate() && v.config.AllowPrivateIPs {
@@ -297,7 +300,7 @@ func (v *ValidationMiddleware) isIPExplicitlyAllowed(ip net.IP) bool {
 	return false
 }
 
-// sanitizeString performs basic string sanitization
+// sanitizeString performs basic string sanitization.
 func (v *ValidationMiddleware) sanitizeString(input string) string {
 	// Remove null bytes
 	input = strings.ReplaceAll(input, "\x00", "")
@@ -313,7 +316,7 @@ func (v *ValidationMiddleware) sanitizeString(input string) string {
 	return result.String()
 }
 
-// ValidateInput performs comprehensive input validation
+// ValidateInput performs comprehensive input validation.
 func (v *ValidationMiddleware) ValidateInput(input string, maxLength int, allowEmpty bool) error {
 	if !allowEmpty && strings.TrimSpace(input) == "" {
 		return fmt.Errorf("input cannot be empty")
@@ -343,15 +346,15 @@ func (v *ValidationMiddleware) ValidateInput(input string, maxLength int, allowE
 	return nil
 }
 
-// ValidateRegex validates a regular expression pattern
+// ValidateRegex validates a regular expression pattern.
 func (v *ValidationMiddleware) ValidateRegex(pattern string) error {
 	if pattern == "" {
 		return fmt.Errorf("regex pattern cannot be empty")
 	}
 
 	// Limit pattern length to prevent ReDoS
-	if len(pattern) > 1000 {
-		return fmt.Errorf("regex pattern too long: maximum 1000 characters allowed")
+	if len(pattern) > MaxRegexPatternLength {
+		return fmt.Errorf("regex pattern too long: maximum %d characters allowed", MaxRegexPatternLength)
 	}
 
 	// Try to compile the regex
@@ -377,7 +380,7 @@ func (v *ValidationMiddleware) ValidateRegex(pattern string) error {
 	return nil
 }
 
-// ValidateJSON validates JSON input
+// ValidateJSON validates JSON input.
 func (v *ValidationMiddleware) ValidateJSON(input string, maxSize int) error {
 	if len(input) > maxSize {
 		return fmt.Errorf("JSON input too large: %d bytes, maximum %d allowed", len(input), maxSize)

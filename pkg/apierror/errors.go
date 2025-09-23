@@ -99,7 +99,7 @@ func NewServiceUnavailableError(message string) *APIError {
 	}
 }
 
-// Error implements the error interface
+// Error implements the error interface.
 func (e *APIError) Error() string {
 	if e.Details != "" {
 		return fmt.Sprintf("%s: %s", e.Message, e.Details)
@@ -107,7 +107,7 @@ func (e *APIError) Error() string {
 	return e.Message
 }
 
-// HTTPStatusCode returns the appropriate HTTP status code for the error
+// HTTPStatusCode returns the appropriate HTTP status code for the error.
 func (e *APIError) HTTPStatusCode() int {
 	switch e.Code {
 	case CodeValidationError:
@@ -129,7 +129,7 @@ func (e *APIError) HTTPStatusCode() int {
 	}
 }
 
-// RespondWithError sends a standardized error response
+// RespondWithError sends a standardized error response.
 func RespondWithError(c *gin.Context, apiError *APIError) {
 	statusCode := apiError.HTTPStatusCode()
 
@@ -146,7 +146,7 @@ func RespondWithError(c *gin.Context, apiError *APIError) {
 	c.JSON(statusCode, response)
 }
 
-// RespondWithSuccess sends a standardized success response
+// RespondWithSuccess sends a standardized success response.
 func RespondWithSuccess(c *gin.Context, data interface{}) {
 	// Add request ID to response header if available
 	if requestID, exists := c.Get("request_id"); exists {
@@ -161,12 +161,12 @@ func RespondWithSuccess(c *gin.Context, data interface{}) {
 	c.JSON(http.StatusOK, response)
 }
 
-// HandleBindingError creates a validation error from Gin binding errors
+// HandleBindingError creates a validation error from Gin binding errors.
 func HandleBindingError(err error) *APIError {
 	return NewValidationError("Invalid request format", err.Error())
 }
 
-// HandleServiceError creates an appropriate error based on the service error
+// HandleServiceError creates an appropriate error based on the service error.
 func HandleServiceError(err error, operation string) *APIError {
 	// For now, treat all service errors as internal errors
 	// In the future, we could have typed errors from services

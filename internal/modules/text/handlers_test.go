@@ -394,7 +394,8 @@ func TestHandler_FormatJSON(t *testing.T) {
 			jsonData, err := json.Marshal(tt.request)
 			require.NoError(t, err)
 
-			req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/data/json/format", bytes.NewBuffer(jsonData))
+			req, err := http.NewRequestWithContext(context.Background(), "POST",
+				"/api/v1/data/json/format", bytes.NewBuffer(jsonData))
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
 

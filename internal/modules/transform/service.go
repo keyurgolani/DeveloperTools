@@ -22,6 +22,11 @@ type TransformService interface {
 	Compress(content, algorithm, action string) (string, error)
 }
 
+const (
+	// JWTParts is the expected number of parts in a JWT token.
+	JWTParts = 3
+)
+
 // transformService implements the TransformService interface.
 type transformService struct{}
 
@@ -30,7 +35,7 @@ func NewTransformService() TransformService {
 	return &transformService{}
 }
 
-// Base64Encode encodes content to Base64
+// Base64Encode encodes content to Base64.
 func (s *transformService) Base64Encode(content string, urlSafe bool) string {
 	if urlSafe {
 		return base64.URLEncoding.EncodeToString([]byte(content))
@@ -38,7 +43,7 @@ func (s *transformService) Base64Encode(content string, urlSafe bool) string {
 	return base64.StdEncoding.EncodeToString([]byte(content))
 }
 
-// Base64Decode decodes Base64 content
+// Base64Decode decodes Base64 content.
 func (s *transformService) Base64Decode(content string, urlSafe bool) (string, error) {
 	var decoded []byte
 	var err error
@@ -56,12 +61,12 @@ func (s *transformService) Base64Decode(content string, urlSafe bool) (string, e
 	return string(decoded), nil
 }
 
-// URLEncode performs URL percent-encoding
+// URLEncode performs URL percent-encoding.
 func (s *transformService) URLEncode(content string) string {
 	return url.QueryEscape(content)
 }
 
-// URLDecode performs URL percent-decoding
+// URLDecode performs URL percent-decoding.
 func (s *transformService) URLDecode(content string) (string, error) {
 	decoded, err := url.QueryUnescape(content)
 	if err != nil {
@@ -70,11 +75,11 @@ func (s *transformService) URLDecode(content string) (string, error) {
 	return decoded, nil
 }
 
-// DecodeJWT decodes a JWT token without signature verification
+// DecodeJWT decodes a JWT token without signature verification.
 func (s *transformService) DecodeJWT(token string) (*JWTDecodeResponse, error) {
 	// Split token into parts
 	parts := strings.Split(token, ".")
-	if len(parts) != 3 {
+	if len(parts) != JWTParts {
 		return nil, fmt.Errorf("invalid JWT format: expected 3 parts, got %d", len(parts))
 	}
 
@@ -109,7 +114,7 @@ func (s *transformService) DecodeJWT(token string) (*JWTDecodeResponse, error) {
 	}, nil
 }
 
-// Compress performs compression or decompression with security controls
+// Compress performs compression or decompression with security controls.
 func (s *transformService) Compress(content, algorithm, action string) (string, error) {
 	switch action {
 	case "compress":
@@ -121,7 +126,7 @@ func (s *transformService) Compress(content, algorithm, action string) (string, 
 	}
 }
 
-// compressData compresses the input content using the specified algorithm
+// compressData compresses the input content using the specified algorithm.
 func (s *transformService) compressData(content, algorithm string) (string, error) {
 	const MaxCompressionInput = 1024 * 1024 // 1MB limit to prevent zip bombs
 
@@ -148,7 +153,7 @@ func (s *transformService) compressData(content, algorithm string) (string, erro
 	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
 }
 
-// decompressData decompresses the input content using the specified algorithm
+// decompressData decompresses the input content using the specified algorithm.
 func (s *transformService) decompressData(content, algorithm string) (string, error) {
 	const MaxCompressionInput = 1024 * 1024 // 1MB limit to prevent zip bombs
 
@@ -177,7 +182,7 @@ func (s *transformService) decompressData(content, algorithm string) (string, er
 	return buf.String(), nil
 }
 
-// compressWithGzip compresses content using gzip
+// compressWithGzip compresses content using gzip.
 func (s *transformService) compressWithGzip(buf *bytes.Buffer, content string) error {
 	writer := gzip.NewWriter(buf)
 	_, err := writer.Write([]byte(content))
@@ -187,7 +192,7 @@ func (s *transformService) compressWithGzip(buf *bytes.Buffer, content string) e
 	return writer.Close()
 }
 
-// compressWithZlib compresses content using zlib
+// compressWithZlib compresses content using zlib.
 func (s *transformService) compressWithZlib(buf *bytes.Buffer, content string) error {
 	writer := zlib.NewWriter(buf)
 	_, err := writer.Write([]byte(content))
@@ -197,7 +202,7 @@ func (s *transformService) compressWithZlib(buf *bytes.Buffer, content string) e
 	return writer.Close()
 }
 
-// createDecompressionReader creates a reader for the specified compression algorithm
+// createDecompressionReader creates a reader for the specified compression algorithm.
 func (s *transformService) createDecompressionReader(data []byte, algorithm string) (io.Reader, error) {
 	switch algorithm {
 	case "gzip":

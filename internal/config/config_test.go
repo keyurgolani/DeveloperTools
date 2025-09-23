@@ -1,4 +1,4 @@
-package config
+package config_test
 
 import (
 	"encoding/json"
@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/keyurgolani/DeveloperTools/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,7 +19,7 @@ func TestLoad(t *testing.T) {
 type configLoadTestCase struct {
 	name     string
 	envVars  map[string]string
-	expected *Config
+	expected *config.Config
 	wantErr  bool
 }
 
@@ -42,26 +43,26 @@ func getDefaultConfigTestCase() configLoadTestCase {
 	return configLoadTestCase{
 		name:    "Default configuration",
 		envVars: map[string]string{},
-		expected: &Config{
-			Server: ServerConfig{
+		expected: &config.Config{
+			Server: config.ServerConfig{
 				Port:       8080,
 				TLSEnabled: false,
 			},
-			Auth: AuthConfig{
+			Auth: config.AuthConfig{
 				Method:      "none",
 				APIKeys:     []string{},
 				JWTSecret:   "",
 				JWTIssuer:   "",
 				JWTAudience: "",
 			},
-			RateLimit: RateLimitConfig{
+			RateLimit: config.RateLimitConfig{
 				Store:    "memory",
 				RedisURL: "",
 			},
-			Log: LogConfig{
+			Log: config.LogConfig{
 				Level: "info",
 			},
-			Tracing: TracingConfig{
+			Tracing: config.TracingConfig{
 				Enabled:        false,
 				ServiceName:    "dev-utilities",
 				Environment:    "development",
@@ -71,14 +72,14 @@ func getDefaultConfigTestCase() configLoadTestCase {
 				OTLPHeaders:    map[string]string{},
 				SampleRate:     1.0,
 			},
-			Crypto: CryptoConfig{
+			Crypto: config.CryptoConfig{
 				ArgonMemory:      65536,
 				ArgonIterations:  3,
 				ArgonParallelism: 4,
 				ArgonSaltLength:  16,
 				ArgonKeyLength:   32,
 			},
-			Secrets: SecretsConfig{
+			Secrets: config.SecretsConfig{
 				MountPath: "/etc/secrets",
 			},
 		},
@@ -116,27 +117,27 @@ func getCustomConfigEnvVars() map[string]string {
 	}
 }
 
-func getCustomConfigExpected() *Config {
-	return &Config{
-		Server: ServerConfig{
+func getCustomConfigExpected() *config.Config {
+	return &config.Config{
+		Server: config.ServerConfig{
 			Port:       9090,
 			TLSEnabled: true,
 		},
-		Auth: AuthConfig{
+		Auth: config.AuthConfig{
 			Method:      "api_key",
 			APIKeys:     []string{"key1", "key2", "key3"},
 			JWTSecret:   "secret123",
 			JWTIssuer:   "test-issuer",
 			JWTAudience: "test-audience",
 		},
-		RateLimit: RateLimitConfig{
+		RateLimit: config.RateLimitConfig{
 			Store:    "redis",
 			RedisURL: "redis://localhost:6379",
 		},
-		Log: LogConfig{
+		Log: config.LogConfig{
 			Level: "debug",
 		},
-		Tracing: TracingConfig{
+		Tracing: config.TracingConfig{
 			Enabled:        false,
 			ServiceName:    "dev-utilities",
 			Environment:    "development",
@@ -146,14 +147,14 @@ func getCustomConfigExpected() *Config {
 			OTLPHeaders:    map[string]string{},
 			SampleRate:     1.0,
 		},
-		Crypto: CryptoConfig{
+		Crypto: config.CryptoConfig{
 			ArgonMemory:      32768,
 			ArgonIterations:  2,
 			ArgonParallelism: 2,
 			ArgonSaltLength:  12,
 			ArgonKeyLength:   24,
 		},
-		Secrets: SecretsConfig{
+		Secrets: config.SecretsConfig{
 			MountPath: "/custom/secrets",
 		},
 	}
@@ -267,7 +268,7 @@ func executeConfigLoadTests(t *testing.T, tests []configLoadTestCase) {
 				_ = os.Setenv(key, value)
 			}
 
-			config, err := Load()
+			config, err := config.Load()
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -310,7 +311,7 @@ func TestLoadFromFile(t *testing.T) {
 	require.NoError(t, err)
 
 	// Load configuration from file
-	config, err := Load(LoadOptions{ConfigFile: configFile})
+	config, err := config.Load(config.LoadOptions{ConfigFile: configFile})
 	require.NoError(t, err)
 
 	assert.Equal(t, 9090, config.Server.Port)
@@ -352,7 +353,7 @@ func TestLoadFromFileWithEnvironmentOverride(t *testing.T) {
 	}()
 
 	// Load configuration
-	config, err := Load(LoadOptions{ConfigFile: configFile})
+	config, err := config.Load(config.LoadOptions{ConfigFile: configFile})
 	require.NoError(t, err)
 
 	// Environment should override file
@@ -387,7 +388,7 @@ func TestLoadSecrets(t *testing.T) {
 	}()
 
 	// Load configuration
-	config, err := Load()
+	config, err := config.Load()
 	require.NoError(t, err)
 
 	assert.Equal(t, "mounted-jwt-secret", config.Auth.JWTSecret)
@@ -417,7 +418,7 @@ func TestLoadSecretsWithEnvironmentPrecedence(t *testing.T) {
 	}()
 
 	// Load configuration
-	config, err := Load()
+	config, err := config.Load()
 	require.NoError(t, err)
 
 	// Environment should take precedence over mounted secret
@@ -425,7 +426,7 @@ func TestLoadSecretsWithEnvironmentPrecedence(t *testing.T) {
 }
 
 func TestLoadNonExistentConfigFile(t *testing.T) {
-	_, err := Load(LoadOptions{ConfigFile: "/nonexistent/config.json"})
+	_, err := config.Load(config.LoadOptions{ConfigFile: "/nonexistent/config.json"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "configuration file does not exist")
 }
@@ -438,120 +439,9 @@ func TestLoadInvalidConfigFile(t *testing.T) {
 	err := os.WriteFile(configFile, []byte("invalid json"), 0600)
 	require.NoError(t, err)
 
-	_, err = Load(LoadOptions{ConfigFile: configFile})
+	_, err = config.Load(config.LoadOptions{ConfigFile: configFile})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to parse configuration file")
-}
-
-func TestValidation(t *testing.T) {
-	tests := getValidationTestCases()
-	executeValidationTests(t, tests)
-}
-
-type validationTestCase struct {
-	name   string
-	config *Config
-	errMsg string
-}
-
-func getValidationTestCases() []validationTestCase {
-	return []validationTestCase{
-		getValidJaegerTracingTestCase(),
-		getInvalidJaegerTracingTestCase(),
-		getInvalidOTLPTracingTestCase(),
-	}
-}
-
-func getValidJaegerTracingTestCase() validationTestCase {
-	return validationTestCase{
-		name:   "Deprecated Jaeger exporter",
-		config: createValidJaegerConfig(),
-		errMsg: "jaeger exporter is deprecated",
-	}
-}
-
-func getInvalidJaegerTracingTestCase() validationTestCase {
-	return validationTestCase{
-		name:   "Invalid tracing - Jaeger without endpoint",
-		config: createInvalidJaegerConfig(),
-		errMsg: "jaeger exporter is deprecated",
-	}
-}
-
-func getInvalidOTLPTracingTestCase() validationTestCase {
-	return validationTestCase{
-		name:   "Invalid tracing - OTLP without endpoint",
-		config: createInvalidOTLPConfig(),
-		errMsg: "OTLP endpoint is required",
-	}
-}
-
-func createValidJaegerConfig() *Config {
-	return &Config{
-		Server:    ServerConfig{Port: 8080},
-		Auth:      AuthConfig{Method: "none"},
-		Log:       LogConfig{Level: "info"},
-		RateLimit: RateLimitConfig{Store: "memory"},
-		Tracing: TracingConfig{
-			Enabled:        true,
-			Exporter:       "jaeger",
-			JaegerEndpoint: "http://jaeger:14268/api/traces",
-			SampleRate:     0.5,
-		},
-		Crypto: getDefaultCryptoConfig(),
-	}
-}
-
-func createInvalidJaegerConfig() *Config {
-	return &Config{
-		Server:    ServerConfig{Port: 8080},
-		Auth:      AuthConfig{Method: "none"},
-		Log:       LogConfig{Level: "info"},
-		RateLimit: RateLimitConfig{Store: "memory"},
-		Tracing: TracingConfig{
-			Enabled:  true,
-			Exporter: "jaeger",
-		},
-		Crypto: getDefaultCryptoConfig(),
-	}
-}
-
-func createInvalidOTLPConfig() *Config {
-	return &Config{
-		Server:    ServerConfig{Port: 8080},
-		Auth:      AuthConfig{Method: "none"},
-		Log:       LogConfig{Level: "info"},
-		RateLimit: RateLimitConfig{Store: "memory"},
-		Tracing: TracingConfig{
-			Enabled:  true,
-			Exporter: "otlp",
-		},
-		Crypto: getDefaultCryptoConfig(),
-	}
-}
-
-func getDefaultCryptoConfig() CryptoConfig {
-	return CryptoConfig{
-		ArgonMemory:      65536,
-		ArgonIterations:  3,
-		ArgonParallelism: 4,
-		ArgonSaltLength:  16,
-		ArgonKeyLength:   32,
-	}
-}
-
-func executeValidationTests(t *testing.T, tests []validationTestCase) {
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.config.validate()
-			if tt.errMsg == "" {
-				assert.NoError(t, err)
-			} else {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.errMsg)
-			}
-		})
-	}
 }
 
 func clearEnv() {

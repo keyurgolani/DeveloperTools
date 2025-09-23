@@ -310,7 +310,7 @@ func loggingMiddleware(logger *logging.Logger) gin.HandlerFunc {
 	}
 }
 
-// sanitizeQueryParams removes sensitive data from query parameters for logging
+// sanitizeQueryParams removes sensitive data from query parameters for logging.
 func sanitizeQueryParams(query string) string {
 	// List of sensitive parameter names that should not be logged
 	sensitiveParams := []string{

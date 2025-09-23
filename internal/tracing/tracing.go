@@ -17,7 +17,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// Config holds tracing configuration
+// Config holds tracing configuration.
 type Config struct {
 	Enabled     bool   `json:"enabled"`
 	ServiceName string `json:"serviceName"`
@@ -35,14 +35,14 @@ type Config struct {
 	SampleRate float64 `json:"sampleRate"` // 0.0 to 1.0
 }
 
-// Tracer wraps OpenTelemetry tracer with application-specific functionality
+// Tracer wraps OpenTelemetry tracer with application-specific functionality.
 type Tracer struct {
 	tracer   trace.Tracer
 	provider *sdktrace.TracerProvider
 	config   *Config
 }
 
-// New creates a new tracer instance
+// New creates a new tracer instance.
 func New(config *Config) (*Tracer, error) {
 	if !config.Enabled {
 		// Return a no-op tracer
@@ -111,12 +111,12 @@ func New(config *Config) (*Tracer, error) {
 	}, nil
 }
 
-// createJaegerExporter is deprecated - use OTLP instead
+// createJaegerExporter is deprecated - use OTLP instead.
 func createJaegerExporter(config *Config) (sdktrace.SpanExporter, error) {
 	return nil, fmt.Errorf("jaeger exporter is deprecated, please use OTLP exporter instead")
 }
 
-// createOTLPExporter creates an OTLP HTTP exporter
+// createOTLPExporter creates an OTLP HTTP exporter.
 func createOTLPExporter(config *Config) (sdktrace.SpanExporter, error) {
 	opts := []otlptracehttp.Option{}
 
@@ -131,14 +131,14 @@ func createOTLPExporter(config *Config) (sdktrace.SpanExporter, error) {
 	return otlptracehttp.New(context.Background(), opts...)
 }
 
-// StartSpan starts a new span with the given name and options
+// StartSpan starts a new span with the given name and options.
 func (t *Tracer) StartSpan(
 	ctx context.Context, name string, opts ...trace.SpanStartOption,
 ) (context.Context, trace.Span) {
 	return t.tracer.Start(ctx, name, opts...)
 }
 
-// StartHTTPSpan starts a span for HTTP operations
+// StartHTTPSpan starts a span for HTTP operations.
 func (t *Tracer) StartHTTPSpan(ctx context.Context, method, path string) (context.Context, trace.Span) {
 	spanName := fmt.Sprintf("%s %s", method, path)
 	ctx, span := t.tracer.Start(ctx, spanName,
@@ -151,7 +151,7 @@ func (t *Tracer) StartHTTPSpan(ctx context.Context, method, path string) (contex
 	return ctx, span
 }
 
-// StartCryptoSpan starts a span for cryptographic operations
+// StartCryptoSpan starts a span for cryptographic operations.
 func (t *Tracer) StartCryptoSpan(ctx context.Context, operation, algorithm string) (context.Context, trace.Span) {
 	spanName := fmt.Sprintf("crypto.%s", operation)
 	ctx, span := t.tracer.Start(ctx, spanName,
@@ -163,7 +163,7 @@ func (t *Tracer) StartCryptoSpan(ctx context.Context, operation, algorithm strin
 	return ctx, span
 }
 
-// StartTextSpan starts a span for text processing operations
+// StartTextSpan starts a span for text processing operations.
 func (t *Tracer) StartTextSpan(ctx context.Context, operation string) (context.Context, trace.Span) {
 	spanName := fmt.Sprintf("text.%s", operation)
 	ctx, span := t.tracer.Start(ctx, spanName,
@@ -174,7 +174,7 @@ func (t *Tracer) StartTextSpan(ctx context.Context, operation string) (context.C
 	return ctx, span
 }
 
-// StartTransformSpan starts a span for data transformation operations
+// StartTransformSpan starts a span for data transformation operations.
 func (t *Tracer) StartTransformSpan(ctx context.Context, operation, format string) (context.Context, trace.Span) {
 	spanName := fmt.Sprintf("transform.%s", operation)
 	ctx, span := t.tracer.Start(ctx, spanName,
@@ -186,7 +186,7 @@ func (t *Tracer) StartTransformSpan(ctx context.Context, operation, format strin
 	return ctx, span
 }
 
-// StartNetworkSpan starts a span for network operations
+// StartNetworkSpan starts a span for network operations.
 func (t *Tracer) StartNetworkSpan(ctx context.Context, operation string, target string) (context.Context, trace.Span) {
 	spanName := fmt.Sprintf("network.%s", operation)
 	ctx, span := t.tracer.Start(ctx, spanName,
@@ -199,7 +199,7 @@ func (t *Tracer) StartNetworkSpan(ctx context.Context, operation string, target 
 	return ctx, span
 }
 
-// RecordError records an error in the current span
+// RecordError records an error in the current span.
 func (t *Tracer) RecordError(span trace.Span, err error) {
 	if err != nil {
 		span.RecordError(err)
@@ -207,12 +207,12 @@ func (t *Tracer) RecordError(span trace.Span, err error) {
 	}
 }
 
-// SetSpanAttributes sets attributes on a span
+// SetSpanAttributes sets attributes on a span.
 func (t *Tracer) SetSpanAttributes(span trace.Span, attrs ...attribute.KeyValue) {
 	span.SetAttributes(attrs...)
 }
 
-// Shutdown gracefully shuts down the tracer
+// Shutdown gracefully shuts down the tracer.
 func (t *Tracer) Shutdown(ctx context.Context) error {
 	if t.provider != nil {
 		return t.provider.Shutdown(ctx)
@@ -220,7 +220,7 @@ func (t *Tracer) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-// GetTraceID returns the trace ID from the current span context
+// GetTraceID returns the trace ID from the current span context.
 func (t *Tracer) GetTraceID(ctx context.Context) string {
 	span := trace.SpanFromContext(ctx)
 	if span.SpanContext().IsValid() {
@@ -229,7 +229,7 @@ func (t *Tracer) GetTraceID(ctx context.Context) string {
 	return ""
 }
 
-// GetSpanID returns the span ID from the current span context
+// GetSpanID returns the span ID from the current span context.
 func (t *Tracer) GetSpanID(ctx context.Context) string {
 	span := trace.SpanFromContext(ctx)
 	if span.SpanContext().IsValid() {
@@ -238,17 +238,17 @@ func (t *Tracer) GetSpanID(ctx context.Context) string {
 	return ""
 }
 
-// InjectTraceContext injects trace context into headers
+// InjectTraceContext injects trace context into headers.
 func (t *Tracer) InjectTraceContext(ctx context.Context, headers map[string]string) {
 	otel.GetTextMapPropagator().Inject(ctx, &mapCarrier{headers})
 }
 
-// ExtractTraceContext extracts trace context from headers
+// ExtractTraceContext extracts trace context from headers.
 func (t *Tracer) ExtractTraceContext(ctx context.Context, headers map[string]string) context.Context {
 	return otel.GetTextMapPropagator().Extract(ctx, &mapCarrier{headers})
 }
 
-// mapCarrier implements TextMapCarrier for map[string]string
+// mapCarrier implements TextMapCarrier for map[string]string.
 type mapCarrier struct {
 	data map[string]string
 }
@@ -269,7 +269,7 @@ func (c *mapCarrier) Keys() []string {
 	return keys
 }
 
-// noopExporter is a no-op exporter for testing
+// noopExporter is a no-op exporter for testing.
 type noopExporter struct{}
 
 func (e *noopExporter) ExportSpans(ctx context.Context, spans []sdktrace.ReadOnlySpan) error {
@@ -282,7 +282,7 @@ func (e *noopExporter) Shutdown(ctx context.Context) error {
 
 // Helper functions for common tracing patterns
 
-// TraceFunction wraps a function with tracing
+// TraceFunction wraps a function with tracing.
 func (t *Tracer) TraceFunction(ctx context.Context, name string, fn func(context.Context) error) error {
 	ctx, span := t.tracer.Start(ctx, name)
 	defer span.End()
@@ -295,8 +295,8 @@ func (t *Tracer) TraceFunction(ctx context.Context, name string, fn func(context
 	return err
 }
 
-// TraceFunctionWithResult wraps a function with tracing and returns a result
-// Note: Generic version removed for compatibility - use TraceFunctionWithInterface instead
+// TraceFunctionWithResult wraps a function with tracing and returns a result.
+// Note: Generic version removed for compatibility - use TraceFunctionWithInterface instead.
 func (t *Tracer) TraceFunctionWithInterface(
 	ctx context.Context, name string, fn func(context.Context) (interface{}, error),
 ) (interface{}, error) {
@@ -311,19 +311,19 @@ func (t *Tracer) TraceFunctionWithInterface(
 	return result, err
 }
 
-// AddSpanEvent adds an event to the current span
+// AddSpanEvent adds an event to the current span.
 func (t *Tracer) AddSpanEvent(ctx context.Context, name string, attrs ...attribute.KeyValue) {
 	span := trace.SpanFromContext(ctx)
 	span.AddEvent(name, trace.WithAttributes(attrs...))
 }
 
-// SetSpanStatus sets the status of the current span
+// SetSpanStatus sets the status of the current span.
 func (t *Tracer) SetSpanStatus(ctx context.Context, code codes.Code, description string) {
 	span := trace.SpanFromContext(ctx)
 	span.SetStatus(code, description)
 }
 
-// DefaultConfig returns a default tracing configuration
+// DefaultConfig returns a default tracing configuration.
 func DefaultConfig() *Config {
 	return &Config{
 		Enabled:     false,

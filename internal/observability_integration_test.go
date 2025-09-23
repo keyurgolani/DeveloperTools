@@ -32,6 +32,7 @@ func TestObservabilityIntegration(t *testing.T) {
 	shutdownTestServer(t, srv)
 }
 
+//nolint:unparam // t parameter is for consistency with other test helper functions
 func setupObservabilityTest(t *testing.T) (*config.Config, *server.Server) {
 	// Create a new registry for this test to avoid conflicts
 	registry := prometheus.NewRegistry()
@@ -137,6 +138,7 @@ func runObservabilityEndpointTests(t *testing.T, srv *server.Server, cfg *config
 			if cfg.Tracing.Enabled && tt.expectedStatus == 200 {
 				// Note: Trace headers would be added by middleware in real implementation
 				// This is just to verify the integration works
+				assert.NotEmpty(t, w.Header().Get("X-Request-ID"))
 			}
 		})
 	}

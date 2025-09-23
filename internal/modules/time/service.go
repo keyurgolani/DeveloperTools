@@ -35,7 +35,7 @@ func NewService() TimeService {
 	return &Service{}
 }
 
-// ConvertTime converts time from one format to another
+// ConvertTime converts time from one format to another.
 func (s *Service) ConvertTime(input, inputFormat, outputFormat string) (string, error) {
 	// Parse input time based on input format
 	parsedTime, err := s.parseTime(input, inputFormat)
@@ -52,7 +52,7 @@ func (s *Service) ConvertTime(input, inputFormat, outputFormat string) (string, 
 	return result, nil
 }
 
-// GetCurrentTime returns the current time in multiple formats (all UTC)
+// GetCurrentTime returns the current time in multiple formats (all UTC).
 func (s *Service) GetCurrentTime() (*TimeResponse, error) {
 	now := time.Now().UTC()
 
@@ -65,7 +65,7 @@ func (s *Service) GetCurrentTime() (*TimeResponse, error) {
 	}, nil
 }
 
-// parseTime parses a time string based on the specified format
+// parseTime parses a time string based on the specified format.
 func (s *Service) parseTime(input, format string) (time.Time, error) {
 	input = strings.TrimSpace(input)
 	format = strings.ToLower(strings.TrimSpace(format))
@@ -130,7 +130,7 @@ func (s *Service) parseTime(input, format string) (time.Time, error) {
 	}
 }
 
-// formatTime formats a time value based on the specified format
+// formatTime formats a time value based on the specified format.
 func (s *Service) formatTime(t time.Time, format string) (string, error) {
 	format = strings.ToLower(strings.TrimSpace(format))
 	utcTime := t.UTC()
@@ -156,7 +156,7 @@ func (s *Service) formatTime(t time.Time, format string) (string, error) {
 	}
 }
 
-// GetSupportedFormats returns a list of supported time formats
+// GetSupportedFormats returns a list of supported time formats.
 func GetSupportedFormats() []string {
 	return []string{
 		FormatUnixSeconds,

@@ -13,6 +13,11 @@ import (
 	"golang.org/x/text/language"
 )
 
+const (
+	// reportSeparatorLength is the length of the separator line in validation reports.
+	reportSeparatorLength = 50
+)
+
 // OpenAPISpec represents a simplified OpenAPI specification.
 type OpenAPISpec struct {
 	OpenAPI    string              `yaml:"openapi"`
@@ -160,7 +165,7 @@ func (v *APIValidator) ValidateEndpoints() *ValidationResult {
 	return result
 }
 
-// ValidateResponseFormats validates that API responses match the expected format
+// ValidateResponseFormats validates that API responses match the expected format.
 func (v *APIValidator) ValidateResponseFormats() *ValidationResult {
 	result := &ValidationResult{
 		Valid:    true,
@@ -191,6 +196,8 @@ func (v *APIValidator) ValidateResponseFormats() *ValidationResult {
 }
 
 // validateEndpointResponse validates a specific endpoint response
+//
+//nolint:unparam // operation parameter is for future extensibility
 func (v *APIValidator) validateEndpointResponse(method, path string, body io.Reader, operation *Operation) error {
 	// Create a test request
 	req := httptest.NewRequest(method, path, body)
@@ -222,7 +229,7 @@ func (v *APIValidator) validateEndpointResponse(method, path string, body io.Rea
 	return validateErrorResponse(responseBody)
 }
 
-// convertOpenAPIPathToGin converts OpenAPI path format to Gin path format
+// convertOpenAPIPathToGin converts OpenAPI path format to Gin path format.
 func convertOpenAPIPathToGin(openAPIPath string) string {
 	// Convert {param} to :param
 	// This is a simplified conversion
@@ -231,7 +238,7 @@ func convertOpenAPIPathToGin(openAPIPath string) string {
 	return result
 }
 
-// ValidateSchemas validates that request/response schemas match the specification
+// ValidateSchemas validates that request/response schemas match the specification.
 func (v *APIValidator) ValidateSchemas() *ValidationResult {
 	result := &ValidationResult{
 		Valid:    true,
@@ -248,7 +255,7 @@ func (v *APIValidator) ValidateSchemas() *ValidationResult {
 	return result
 }
 
-// validateSuccessResponse validates the format of a success response
+// validateSuccessResponse validates the format of a success response.
 func validateSuccessResponse(responseBody map[string]interface{}) error {
 	success, ok := responseBody["success"]
 	if !ok || success != true {
@@ -262,7 +269,7 @@ func validateSuccessResponse(responseBody map[string]interface{}) error {
 	return nil
 }
 
-// validateErrorResponse validates the format of an error response
+// validateErrorResponse validates the format of an error response.
 func validateErrorResponse(responseBody map[string]interface{}) error {
 	success, ok := responseBody["success"]
 	if !ok || success != false {
@@ -276,7 +283,7 @@ func validateErrorResponse(responseBody map[string]interface{}) error {
 	return nil
 }
 
-// GenerateValidationReport generates a comprehensive validation report
+// GenerateValidationReport generates a comprehensive validation report.
 func (v *APIValidator) GenerateValidationReport() map[string]*ValidationResult {
 	report := make(map[string]*ValidationResult)
 
@@ -287,7 +294,7 @@ func (v *APIValidator) GenerateValidationReport() map[string]*ValidationResult {
 	return report
 }
 
-// IsValidationPassing checks if all validations are passing
+// IsValidationPassing checks if all validations are passing.
 func IsValidationPassing(report map[string]*ValidationResult) bool {
 	for _, result := range report {
 		if !result.Valid {
@@ -297,7 +304,7 @@ func IsValidationPassing(report map[string]*ValidationResult) bool {
 	return true
 }
 
-// PrintValidationReport prints a human-readable validation report
+// PrintValidationReport prints a human-readable validation report.
 func PrintValidationReport(report map[string]*ValidationResult) {
 	fmt.Println("🔍 API Validation Report")
 	fmt.Println("========================")
@@ -327,7 +334,7 @@ func PrintValidationReport(report map[string]*ValidationResult) {
 		}
 	}
 
-	fmt.Println("\n" + strings.Repeat("=", 50))
+	fmt.Println("\n" + strings.Repeat("=", reportSeparatorLength))
 	if IsValidationPassing(report) {
 		fmt.Println("🎉 All validations PASSED!")
 	} else {

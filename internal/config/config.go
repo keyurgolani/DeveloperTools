@@ -57,12 +57,12 @@ type RateLimitConfig struct {
 	RedisURL string `json:"redisUrl"` // Redis connection URL
 }
 
-// LogConfig holds logging configuration
+// LogConfig holds logging configuration.
 type LogConfig struct {
 	Level string `json:"level"`
 }
 
-// TracingConfig holds tracing configuration
+// TracingConfig holds tracing configuration.
 type TracingConfig struct {
 	Enabled        bool              `json:"enabled"`
 	ServiceName    string            `json:"serviceName"`
@@ -74,7 +74,7 @@ type TracingConfig struct {
 	SampleRate     float64           `json:"sampleRate"`     // 0.0 to 1.0
 }
 
-// LoadOptions holds options for loading configuration
+// LoadOptions holds options for loading configuration.
 type LoadOptions struct {
 	ConfigFile string // Path to configuration file (optional)
 }
@@ -83,7 +83,7 @@ type LoadOptions struct {
 // 1. Default values
 // 2. Configuration file (if provided)
 // 3. Environment variables
-// 4. Mounted secrets (if configured)
+// 4. Mounted secrets (if configured).
 func Load(opts ...LoadOptions) (*Config, error) {
 	var options LoadOptions
 	if len(opts) > 0 {
@@ -116,7 +116,7 @@ func Load(opts ...LoadOptions) (*Config, error) {
 	return config, nil
 }
 
-// getDefaultConfig returns configuration with default values
+// getDefaultConfig returns configuration with default values.
 func getDefaultConfig() *Config {
 	return &Config{
 		Server: ServerConfig{
@@ -160,7 +160,7 @@ func getDefaultConfig() *Config {
 	}
 }
 
-// loadFromFile loads configuration from a JSON file
+// loadFromFile loads configuration from a JSON file.
 func loadFromFile(config *Config, filePath string) error {
 	// Validate file path to prevent directory traversal
 	if strings.Contains(filePath, "..") {
@@ -183,7 +183,7 @@ func loadFromFile(config *Config, filePath string) error {
 	return nil
 }
 
-// loadFromEnvironment loads configuration from environment variables
+// loadFromEnvironment loads configuration from environment variables.
 func loadFromEnvironment(config *Config) {
 	loadServerConfig(config)
 	loadAuthConfig(config)
@@ -288,6 +288,8 @@ func loadSecretsConfig(config *Config) {
 }
 
 // loadSecrets loads secrets from mounted files
+//
+//nolint:unparam // error return is for future extensibility
 func loadSecrets(config *Config) error {
 	if config.Secrets.MountPath == "" {
 		return nil // No secrets mount path configured
@@ -327,7 +329,7 @@ func loadSecrets(config *Config) error {
 	return nil
 }
 
-// readSecret reads a secret from a mounted file
+// readSecret reads a secret from a mounted file.
 func readSecret(path string) (string, error) {
 	// Validate path to prevent directory traversal
 	if strings.Contains(path, "..") {
@@ -346,7 +348,7 @@ func readSecret(path string) (string, error) {
 	return strings.TrimSpace(string(data)), nil
 }
 
-// validate ensures the configuration is valid
+// validate ensures the configuration is valid.
 func (c *Config) validate() error {
 	if err := c.validateServer(); err != nil {
 		return err
@@ -366,7 +368,7 @@ func (c *Config) validate() error {
 	return c.validateCrypto()
 }
 
-// validateServer validates server configuration
+// validateServer validates server configuration.
 func (c *Config) validateServer() error {
 	if c.Server.Port < 1 || c.Server.Port > 65535 {
 		return fmt.Errorf("invalid server port: %d", c.Server.Port)
@@ -374,7 +376,7 @@ func (c *Config) validateServer() error {
 	return nil
 }
 
-// validateAuth validates authentication configuration
+// validateAuth validates authentication configuration.
 func (c *Config) validateAuth() error {
 	validAuthMethods := []string{"api_key", "jwt", "none"}
 	if !contains(validAuthMethods, c.Auth.Method) {
@@ -392,7 +394,7 @@ func (c *Config) validateAuth() error {
 	return nil
 }
 
-// validateLog validates logging configuration
+// validateLog validates logging configuration.
 func (c *Config) validateLog() error {
 	validLogLevels := []string{"debug", "info", "warn", "error"}
 	if !contains(validLogLevels, c.Log.Level) {
@@ -401,7 +403,7 @@ func (c *Config) validateLog() error {
 	return nil
 }
 
-// validateRateLimit validates rate limiting configuration
+// validateRateLimit validates rate limiting configuration.
 func (c *Config) validateRateLimit() error {
 	validStores := []string{"memory", "redis"}
 	if !contains(validStores, c.RateLimit.Store) {
@@ -415,7 +417,7 @@ func (c *Config) validateRateLimit() error {
 	return nil
 }
 
-// validateTracing validates tracing configuration
+// validateTracing validates tracing configuration.
 func (c *Config) validateTracing() error {
 	if !c.Tracing.Enabled {
 		return nil
@@ -442,7 +444,7 @@ func (c *Config) validateTracing() error {
 	return nil
 }
 
-// validateCrypto validates cryptographic configuration
+// validateCrypto validates cryptographic configuration.
 func (c *Config) validateCrypto() error {
 	if c.Crypto.ArgonMemory < constants.MinArgonMemory {
 		return fmt.Errorf("Argon2 memory must be at least %d KB, got %d", constants.MinArgonMemory, c.Crypto.ArgonMemory)
@@ -470,6 +472,8 @@ func (c *Config) validateCrypto() error {
 }
 
 // Helper functions for environment variable parsing
+//
+//nolint:unparam // defaultValue parameter is for consistency with other getEnv functions
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value

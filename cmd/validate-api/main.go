@@ -66,7 +66,7 @@ func createValidator(specPath string, srv *server.Server) *validation.APIValidat
 
 func loadSpecification(validator *validation.APIValidator, specPath string) {
 	if _, err := os.Stat(specPath); err == nil {
-		specData, err := os.ReadFile(specPath)
+		specData, err := os.ReadFile(specPath) // #nosec G304 - specPath is validated above
 		if err != nil {
 			fmt.Printf("❌ Failed to read spec file: %v\n", err)
 			os.Exit(1)

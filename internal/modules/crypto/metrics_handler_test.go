@@ -2,6 +2,7 @@ package crypto_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,46 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// Generic helper function to execute metrics test cases.
+func executeMetricsTests(t *testing.T, router *gin.Engine, endpoint string, tests []struct {
+	name           string
+	request        interface{}
+	expectedStatus int
+	expectSuccess  bool
+}) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reqBody, err := json.Marshal(tt.request)
+			require.NoError(t, err)
+
+			req, err := http.NewRequestWithContext(
+				context.Background(),
+				"POST",
+				endpoint,
+				bytes.NewBuffer(reqBody),
+			)
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+
+			var response map[string]interface{}
+			err = json.Unmarshal(w.Body.Bytes(), &response)
+			require.NoError(t, err)
+
+			if tt.expectSuccess {
+				assert.True(t, response["success"].(bool))
+				assert.NotNil(t, response["data"])
+			} else {
+				assert.NotNil(t, response["error"])
+			}
+		})
+	}
+}
 
 func setupMetricsTestRouter() *gin.Engine {
 	// Clear any existing metrics to avoid duplicate registration
@@ -61,32 +102,28 @@ func TestMetricsAwareHandler_Hash(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			reqBody, err := json.Marshal(tt.request)
-			require.NoError(t, err)
+	var genericTests []struct {
+		name           string
+		request        interface{}
+		expectedStatus int
+		expectSuccess  bool
+	}
 
-			req, err := http.NewRequest("POST", "/api/v1/crypto/hash", bytes.NewBuffer(reqBody))
-			require.NoError(t, err)
-			req.Header.Set("Content-Type", "application/json")
-
-			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-
-			var response map[string]interface{}
-			err = json.Unmarshal(w.Body.Bytes(), &response)
-			require.NoError(t, err)
-
-			if tt.expectSuccess {
-				assert.True(t, response["success"].(bool))
-				assert.NotNil(t, response["data"])
-			} else {
-				assert.NotNil(t, response["error"])
-			}
+	for _, test := range tests {
+		genericTests = append(genericTests, struct {
+			name           string
+			request        interface{}
+			expectedStatus int
+			expectSuccess  bool
+		}{
+			name:           test.name,
+			request:        test.request,
+			expectedStatus: test.expectedStatus,
+			expectSuccess:  test.expectSuccess,
 		})
 	}
+
+	executeMetricsTests(t, router, "/api/v1/crypto/hash", genericTests)
 }
 
 func TestMetricsAwareHandler_HMAC(t *testing.T) {
@@ -120,32 +157,28 @@ func TestMetricsAwareHandler_HMAC(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			reqBody, err := json.Marshal(tt.request)
-			require.NoError(t, err)
+	var genericTests []struct {
+		name           string
+		request        interface{}
+		expectedStatus int
+		expectSuccess  bool
+	}
 
-			req, err := http.NewRequest("POST", "/api/v1/crypto/hmac", bytes.NewBuffer(reqBody))
-			require.NoError(t, err)
-			req.Header.Set("Content-Type", "application/json")
-
-			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-
-			var response map[string]interface{}
-			err = json.Unmarshal(w.Body.Bytes(), &response)
-			require.NoError(t, err)
-
-			if tt.expectSuccess {
-				assert.True(t, response["success"].(bool))
-				assert.NotNil(t, response["data"])
-			} else {
-				assert.NotNil(t, response["error"])
-			}
+	for _, test := range tests {
+		genericTests = append(genericTests, struct {
+			name           string
+			request        interface{}
+			expectedStatus int
+			expectSuccess  bool
+		}{
+			name:           test.name,
+			request:        test.request,
+			expectedStatus: test.expectedStatus,
+			expectSuccess:  test.expectSuccess,
 		})
 	}
+
+	executeMetricsTests(t, router, "/api/v1/crypto/hmac", genericTests)
 }
 
 func TestMetricsAwareHandler_HashPassword(t *testing.T) {
@@ -158,7 +191,8 @@ func TestMetricsAwareHandler_HashPassword(t *testing.T) {
 	reqBody, err := json.Marshal(request)
 	require.NoError(t, err)
 
-	req, err := http.NewRequest("POST", "/api/v1/crypto/password/hash", bytes.NewBuffer(reqBody))
+	req, err := http.NewRequestWithContext(
+		context.Background(), "POST", "/api/v1/crypto/password/hash", bytes.NewBuffer(reqBody))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -186,7 +220,8 @@ func TestMetricsAwareHandler_VerifyPassword(t *testing.T) {
 	reqBody, err := json.Marshal(hashRequest)
 	require.NoError(t, err)
 
-	req, err := http.NewRequest("POST", "/api/v1/crypto/password/hash", bytes.NewBuffer(reqBody))
+	req, err := http.NewRequestWithContext(
+		context.Background(), "POST", "/api/v1/crypto/password/hash", bytes.NewBuffer(reqBody))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -209,7 +244,8 @@ func TestMetricsAwareHandler_VerifyPassword(t *testing.T) {
 	reqBody, err = json.Marshal(verifyRequest)
 	require.NoError(t, err)
 
-	req, err = http.NewRequest("POST", "/api/v1/crypto/password/verify", bytes.NewBuffer(reqBody))
+	req, err = http.NewRequestWithContext(
+		context.Background(), "POST", "/api/v1/crypto/password/verify", bytes.NewBuffer(reqBody))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -260,7 +296,8 @@ MrpbqBmVmfvdWk4i+cLdDpO+ycgzTQIHmz1IuiUZKTARyQA5pD79y6b0kOHWw1aU
 	reqBody, err := json.Marshal(request)
 	require.NoError(t, err)
 
-	req, err := http.NewRequest("POST", "/api/v1/crypto/cert/decode", bytes.NewBuffer(reqBody))
+	req, err := http.NewRequestWithContext(
+		context.Background(), "POST", "/api/v1/crypto/cert/decode", bytes.NewBuffer(reqBody))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -280,7 +317,8 @@ MrpbqBmVmfvdWk4i+cLdDpO+ycgzTQIHmz1IuiUZKTARyQA5pD79y6b0kOHWw1aU
 func TestMetricsAwareHandler_InvalidJSON(t *testing.T) {
 	router := setupMetricsTestRouter()
 
-	req, err := http.NewRequest("POST", "/api/v1/crypto/hash", bytes.NewBuffer([]byte("invalid json")))
+	req, err := http.NewRequestWithContext(
+		context.Background(), "POST", "/api/v1/crypto/hash", bytes.NewBuffer([]byte("invalid json")))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 

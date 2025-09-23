@@ -14,14 +14,14 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// RateLimit defines rate limiting configuration
+// RateLimit defines rate limiting configuration.
 type RateLimit struct {
 	RequestsPerMinute int           `json:"requestsPerMinute"`
 	BurstSize         int           `json:"burstSize"`
 	WindowSize        time.Duration `json:"windowSize"`
 }
 
-// RateLimitConfig holds rate limiting configuration
+// RateLimitConfig holds rate limiting configuration.
 type RateLimitConfig struct {
 	Store    string               `json:"store"`    // "memory" or "redis"
 	RedisURL string               `json:"redisUrl"` // Redis connection URL
@@ -29,14 +29,14 @@ type RateLimitConfig struct {
 	Default  RateLimit            `json:"default"`  // Default rate limit
 }
 
-// RateLimitStore interface defines the storage backend for rate limiting
+// RateLimitStore interface defines the storage backend for rate limiting.
 type RateLimitStore interface {
 	Allow(ctx context.Context, key string, limit RateLimit) (bool, error)
 	Reset(ctx context.Context, key string) error
 	Close() error
 }
 
-// TokenBucket represents a token bucket for rate limiting
+// TokenBucket represents a token bucket for rate limiting.
 type TokenBucket struct {
 	tokens     int
 	capacity   int
@@ -45,7 +45,7 @@ type TokenBucket struct {
 	mutex      sync.Mutex
 }
 
-// NewTokenBucket creates a new token bucket
+// NewTokenBucket creates a new token bucket.
 func NewTokenBucket(capacity, refillRate int) *TokenBucket {
 	return &TokenBucket{
 		tokens:     capacity,
@@ -55,7 +55,7 @@ func NewTokenBucket(capacity, refillRate int) *TokenBucket {
 	}
 }
 
-// Allow checks if a request is allowed and consumes a token if so
+// Allow checks if a request is allowed and consumes a token if so.
 func (tb *TokenBucket) Allow() bool {
 	tb.mutex.Lock()
 	defer tb.mutex.Unlock()
@@ -80,21 +80,21 @@ func (tb *TokenBucket) Allow() bool {
 }
 
 // SetLastRefillForTesting sets the lastRefill time for testing purposes
-// This method should only be used in tests
+// This method should only be used in tests.
 func (tb *TokenBucket) SetLastRefillForTesting(t time.Time) {
 	tb.mutex.Lock()
 	defer tb.mutex.Unlock()
 	tb.lastRefill = t
 }
 
-// MemoryRateLimitStore implements in-memory rate limiting storage
+// MemoryRateLimitStore implements in-memory rate limiting storage.
 type MemoryRateLimitStore struct {
 	buckets map[string]*TokenBucket
 	mutex   sync.RWMutex
 	logger  *slog.Logger
 }
 
-// NewMemoryRateLimitStore creates a new in-memory rate limit store
+// NewMemoryRateLimitStore creates a new in-memory rate limit store.
 func NewMemoryRateLimitStore(logger *slog.Logger) *MemoryRateLimitStore {
 	store := &MemoryRateLimitStore{
 		buckets: make(map[string]*TokenBucket),
@@ -107,7 +107,7 @@ func NewMemoryRateLimitStore(logger *slog.Logger) *MemoryRateLimitStore {
 	return store
 }
 
-// Allow checks if a request is allowed for the given key and limit
+// Allow checks if a request is allowed for the given key and limit.
 func (m *MemoryRateLimitStore) Allow(ctx context.Context, key string, limit RateLimit) (bool, error) {
 	m.mutex.Lock()
 	bucket, exists := m.buckets[key]
@@ -120,7 +120,7 @@ func (m *MemoryRateLimitStore) Allow(ctx context.Context, key string, limit Rate
 	return bucket.Allow(), nil
 }
 
-// Reset resets the rate limit for the given key
+// Reset resets the rate limit for the given key.
 func (m *MemoryRateLimitStore) Reset(ctx context.Context, key string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -128,30 +128,30 @@ func (m *MemoryRateLimitStore) Reset(ctx context.Context, key string) error {
 	return nil
 }
 
-// Close closes the store (no-op for memory store)
+// Close closes the store (no-op for memory store).
 func (m *MemoryRateLimitStore) Close() error {
 	return nil
 }
 
-// cleanup removes old unused buckets
+// cleanup removes old unused buckets.
 func (m *MemoryRateLimitStore) cleanup() {
-	ticker := time.NewTicker(5 * time.Minute)
+	const cleanupInterval = 5 * time.Minute
+	ticker := time.NewTicker(cleanupInterval)
 	defer ticker.Stop()
 
 	for range ticker.C {
 		// In a real implementation, we'd track last access time and clean up old buckets
 		// For now, we'll skip the cleanup as buckets are kept indefinitely
-		// TODO: Implement proper cleanup logic with last access tracking
 	}
 }
 
-// RedisRateLimitStore implements Redis-backed rate limiting storage
+// RedisRateLimitStore implements Redis-backed rate limiting storage.
 type RedisRateLimitStore struct {
 	client *redis.Client
 	logger *slog.Logger
 }
 
-// NewRedisRateLimitStore creates a new Redis rate limit store
+// NewRedisRateLimitStore creates a new Redis rate limit store.
 func NewRedisRateLimitStore(redisURL string, logger *slog.Logger) (*RedisRateLimitStore, error) {
 	opts, err := redis.ParseURL(redisURL)
 	if err != nil {
@@ -161,7 +161,8 @@ func NewRedisRateLimitStore(redisURL string, logger *slog.Logger) (*RedisRateLim
 	client := redis.NewClient(opts)
 
 	// Test connection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	const connectionTimeout = 5 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), connectionTimeout)
 	defer cancel()
 
 	if err := client.Ping(ctx).Err(); err != nil {
@@ -174,7 +175,7 @@ func NewRedisRateLimitStore(redisURL string, logger *slog.Logger) (*RedisRateLim
 	}, nil
 }
 
-// Allow checks if a request is allowed using Redis-based token bucket
+// Allow checks if a request is allowed using Redis-based token bucket.
 func (r *RedisRateLimitStore) Allow(ctx context.Context, key string, limit RateLimit) (bool, error) {
 	// Use Lua script for atomic token bucket operations
 	script := `
@@ -223,24 +224,24 @@ func (r *RedisRateLimitStore) Allow(ctx context.Context, key string, limit RateL
 	return allowed == 1, nil
 }
 
-// Reset resets the rate limit for the given key
+// Reset resets the rate limit for the given key.
 func (r *RedisRateLimitStore) Reset(ctx context.Context, key string) error {
 	return r.client.Del(ctx, key).Err()
 }
 
-// Close closes the Redis connection
+// Close closes the Redis connection.
 func (r *RedisRateLimitStore) Close() error {
 	return r.client.Close()
 }
 
-// RateLimitMiddleware implements rate limiting middleware
+// RateLimitMiddleware implements rate limiting middleware.
 type RateLimitMiddleware struct {
 	store  RateLimitStore
 	config *RateLimitConfig
 	logger *slog.Logger
 }
 
-// NewRateLimitMiddleware creates a new rate limiting middleware
+// NewRateLimitMiddleware creates a new rate limiting middleware.
 func NewRateLimitMiddleware(config *RateLimitConfig, logger *slog.Logger) (*RateLimitMiddleware, error) {
 	var store RateLimitStore
 	var err error
@@ -267,7 +268,7 @@ func NewRateLimitMiddleware(config *RateLimitConfig, logger *slog.Logger) (*Rate
 	}, nil
 }
 
-// Limit returns a middleware that enforces rate limiting
+// Limit returns a middleware that enforces rate limiting.
 func (m *RateLimitMiddleware) Limit() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Determine client identifier
@@ -325,7 +326,7 @@ func (m *RateLimitMiddleware) Limit() gin.HandlerFunc {
 	}
 }
 
-// getClientID determines the client identifier for rate limiting
+// getClientID determines the client identifier for rate limiting.
 func (m *RateLimitMiddleware) getClientID(c *gin.Context) string {
 	// Try to get authenticated user ID first
 	if userID, exists := c.Get("user_id"); exists {
@@ -338,7 +339,7 @@ func (m *RateLimitMiddleware) getClientID(c *gin.Context) string {
 	return c.ClientIP()
 }
 
-// getOperationType determines the operation type for rate limiting
+// getOperationType determines the operation type for rate limiting.
 func (m *RateLimitMiddleware) getOperationType(c *gin.Context) string {
 	path := c.Request.URL.Path
 
@@ -357,7 +358,7 @@ func (m *RateLimitMiddleware) getOperationType(c *gin.Context) string {
 	}
 }
 
-// getRateLimit gets the rate limit for the given operation type
+// getRateLimit gets the rate limit for the given operation type.
 func (m *RateLimitMiddleware) getRateLimit(operationType string) RateLimit {
 	if limit, exists := m.config.Limits[operationType]; exists {
 		return limit
@@ -365,12 +366,12 @@ func (m *RateLimitMiddleware) getRateLimit(operationType string) RateLimit {
 	return m.config.Default
 }
 
-// Close closes the rate limit store
+// Close closes the rate limit store.
 func (m *RateLimitMiddleware) Close() error {
 	return m.store.Close()
 }
 
-// Helper function for min
+// Helper function for min.
 func min(a, b int) int {
 	if a < b {
 		return a

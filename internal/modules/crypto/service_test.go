@@ -182,22 +182,25 @@ func getSHA512TestCases() []struct {
 			name:      "SHA512 empty string",
 			content:   "",
 			algorithm: "sha512",
-			expected:  "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e",
-			wantErr:   false,
+			expected: "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce" +
+				"47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e",
+			wantErr: false,
 		},
 		{
 			name:      "SHA512 hello world",
 			content:   "hello world",
 			algorithm: "sha512",
-			expected:  "309ecc489c12d6eb4cc40f50c902f2b4d0ed77ee511a7c7a9bcd3ca86d4cd86f989dd35bc5ff499670da34255b45b0cfd830e81f605dcf7dc5542e93ae9cd76f",
-			wantErr:   false,
+			expected: "309ecc489c12d6eb4cc40f50c902f2b4d0ed77ee511a7c7a9bcd3ca86d4cd86f" +
+				"989dd35bc5ff499670da34255b45b0cfd830e81f605dcf7dc5542e93ae9cd76f",
+			wantErr: false,
 		},
 		{
 			name:      "SHA512 The quick brown fox",
 			content:   "The quick brown fox jumps over the lazy dog",
 			algorithm: "sha512",
-			expected:  "07e547d9586f6a73f73fbac0435ed76951218fb7d0c8d788a309d785436bbb642e93a252a954f23912547d1e8a3b5ed6e1bfd7097821233fa0538f3db854fee6",
-			wantErr:   false,
+			expected: "07e547d9586f6a73f73fbac0435ed76951218fb7d0c8d788a309d785436bbb642" +
+				"e93a252a954f23912547d1e8a3b5ed6e1bfd7097821233fa0538f3db854fee6",
+			wantErr: false,
 		},
 	}
 }
@@ -406,8 +409,10 @@ func getHMACSHA256TestCases() []struct {
 			wantErr:   false,
 		},
 		{
-			name:      "HMAC-SHA256 test case 3",
-			content:   "\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd",
+			name: "HMAC-SHA256 test case 3",
+			content: "\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd" +
+				"\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd" +
+				"\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd",
 			key:       "\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa",
 			algorithm: "sha256",
 			expected:  "773ea91e36800e46854db8ebd09181a72959098b3ef8c122d9635514ced565fe",
@@ -437,16 +442,18 @@ func getHMACSHA512TestCases() []struct {
 			content:   "Hi There",
 			key:       "\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b",
 			algorithm: "sha512",
-			expected:  "87aa7cdea5ef619d4ff0b4241a1d6cb02379f4e2ce4ec2787ad0b30545e17cdedaa833b7d6b8a702038b274eaea3f4e4be9d914eeb61f1702e696c203a126854",
-			wantErr:   false,
+			expected: "87aa7cdea5ef619d4ff0b4241a1d6cb02379f4e2ce4ec2787ad0b30545e17cded" +
+				"aa833b7d6b8a702038b274eaea3f4e4be9d914eeb61f1702e696c203a126854",
+			wantErr: false,
 		},
 		{
 			name:      "HMAC-SHA512 test case 2",
 			content:   "what do ya want for nothing?",
 			key:       "Jefe",
 			algorithm: "sha512",
-			expected:  "164b7a7bfcf819e2e395fbe73b56e0a387bd64222e831fd610270cd7ea2505549758bf75c05a994a6d034f65f8f0e6fdcaeab1a34d4a6b4b636e070a38bce737",
-			wantErr:   false,
+			expected: "164b7a7bfcf819e2e395fbe73b56e0a387bd64222e831fd610270cd7ea2505549" +
+				"758bf75c05a994a6d034f65f8f0e6fdcaeab1a34d4a6b4b636e070a38bce737",
+			wantErr: false,
 		},
 	}
 }
@@ -486,7 +493,7 @@ func getHMACEdgeTestCases() []struct {
 		{
 			name:      "Long key (longer than block size)",
 			content:   "Test Using Larger Than Block-Size Key - Hash Key First",
-			key:       "\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa",
+			key:       "\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa", //nolint:lll
 			algorithm: "sha256",
 			expected:  "a98622a65f519a3e56acc5020d18ae0f2ded1db0af0e791a25dd3d7090e90df8",
 			wantErr:   false,
@@ -1117,27 +1124,7 @@ func TestExtractKeyUsage(t *testing.T) {
 	service := crypto.NewCryptoService()
 
 	// Use a valid, complete certificate for testing
-	testCert := `-----BEGIN CERTIFICATE-----
-MIIDJjCCAg4CCQD+EO1siPH5GTANBgkqhkiG9w0BAQsFADBVMQswCQYDVQQGEwJV
-UzENMAsGA1UECAwEVGVzdDENMAsGA1UEBwwEVGVzdDENMAsGA1UECgwEVGVzdDEZ
-MBcGA1UEAwwQdGVzdC5leGFtcGxlLmNvbTAeFw0yNTA5MjAxOTMxNTNaFw0yNjA5
-MjAxOTMxNTNaMFUxCzAJBgNVBAYTAlVTMQ0wCwYDVQQIDARUZXN0MQ0wCwYDVQQH
-DARUZXN0MQ0wCwYDVQQKDARUZXN0MRkwFwYDVQQDDBB0ZXN0LmV4YW1wbGUuY29t
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAw0anQHt/88gvbutvzcdT
-cSKOXPkx9mrMhETXWpqcGjHliavZn51Qavvy7sLrzduUTt7Y/m4Y/jOjhoJGOaaa
-Bk4FQbAYIQsKtizp5Ydkn94WgQ50aTv+OrH5hHsw25pMiJYRv6lptTi+CIAfKrJD
-T6Xrtytrph+cUmvI3LkmvZCY+7S8694VHpArmz4TTo29GAVcEjv8JlODKH049lfR
-NvU21eEOajQozlXJ/vPeugwwuRlZFRjrmWtbmWEhyhsNOXOl6oo6EFBU2/eipbVT
-V8SG0QogwAynlMyXVWkjSw5o9fErSb2TxJti+SjB4Ys2BRitr8WN0jxYXTWBUvl1
-KwIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQAuKxZ0CNbxhh97CjQ5XgThVE3X0Yv9
-YNJ9QTtF4p4mBvn8L5DSj8OhEYsKMfNU2Tc+hJgPBQMA3zPKQzg3IJfOldM4cCWU
-UdVm4QRSOpcTGcjCWriu6IBKXaYoJkbyts2C6TSAAdnz/LoNAIxl+j0r93OQS4Su
-6E/wQH38RwSlAfY8l/JofiAbjn3u1gMLb9iMI+MooBj5/AQ2NlvYZBLqoURFA4cz
-bm1nEqtJZCN/WZA4K2YIi0xboI1oMRbUIIYgmqhR5+qGRpO32Roa/8XuXw5o1ftn
-nU4ZU3j43ohhFR96ZjnvIZ/5eYr/L0ZlexDZ8gpGXsaV+RLF5DxGTOFp
------END CERTIFICATE-----`
-
-	result, err := service.DecodeCertificate(testCert)
+	result, err := service.DecodeCertificate(testCertificate)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 

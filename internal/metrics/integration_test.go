@@ -217,27 +217,33 @@ func verifyMetricsRecording(t *testing.T, metricsInstance *metrics.Metrics) {
 }
 
 func verifyHTTPMetrics(t *testing.T, metricsInstance *metrics.Metrics) {
-	totalRequests := testutil.ToFloat64(metricsInstance.HTTPRequestsTotal().WithLabelValues("POST", "/api/v1/crypto/hash", "200"))
+	totalRequests := testutil.ToFloat64(metricsInstance.HTTPRequestsTotal().WithLabelValues(
+		"POST", "/api/v1/crypto/hash", "200"))
 	assert.Equal(t, float64(1), totalRequests)
 
-	failedRequests := testutil.ToFloat64(metricsInstance.HTTPRequestsTotal().WithLabelValues("POST", "/api/v1/crypto/hash", "400"))
+	failedRequests := testutil.ToFloat64(metricsInstance.HTTPRequestsTotal().WithLabelValues(
+		"POST", "/api/v1/crypto/hash", "400"))
 	assert.Equal(t, float64(1), failedRequests)
 }
 
 func verifyBusinessMetrics(t *testing.T, metricsInstance *metrics.Metrics) {
 	// Check crypto operations
-	cryptoSuccess := testutil.ToFloat64(metricsInstance.CryptoOperationsTotal().WithLabelValues("hash", "sha256", "success"))
+	cryptoSuccess := testutil.ToFloat64(metricsInstance.CryptoOperationsTotal().WithLabelValues(
+		"hash", "sha256", "success"))
 	assert.Equal(t, float64(1), cryptoSuccess)
 
-	cryptoError := testutil.ToFloat64(metricsInstance.CryptoOperationsTotal().WithLabelValues("hash", "unknown", "validation_error"))
+	cryptoError := testutil.ToFloat64(metricsInstance.CryptoOperationsTotal().WithLabelValues(
+		"hash", "unknown", "validation_error"))
 	assert.Equal(t, float64(1), cryptoError)
 
 	// Check text operations
-	textSuccess := testutil.ToFloat64(metricsInstance.TextOperationsTotal().WithLabelValues("case_convert", "success"))
+	textSuccess := testutil.ToFloat64(metricsInstance.TextOperationsTotal().WithLabelValues(
+		"case_convert", "success"))
 	assert.Equal(t, float64(1), textSuccess)
 
 	// Check transform operations
-	transformSuccess := testutil.ToFloat64(metricsInstance.TransformOperationsTotal().WithLabelValues("encode", "base64", "success"))
+	transformSuccess := testutil.ToFloat64(metricsInstance.TransformOperationsTotal().WithLabelValues(
+		"encode", "base64", "success"))
 	assert.Equal(t, float64(1), transformSuccess)
 
 	// Check ID operations
@@ -366,7 +372,8 @@ func TestMetricsLabelsValidation(t *testing.T) {
 			})
 
 			// Verify metric was recorded
-			counter := testutil.ToFloat64(metricsInstance.CryptoOperationsTotal().WithLabelValues(tc.operation, tc.algorithm, tc.status))
+			counter := testutil.ToFloat64(metricsInstance.CryptoOperationsTotal().WithLabelValues(
+				tc.operation, tc.algorithm, tc.status))
 			assert.Equal(t, float64(1), counter)
 		})
 	}

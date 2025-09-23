@@ -11,6 +11,11 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+const (
+	// httpErrorThreshold is the HTTP status code threshold for errors.
+	httpErrorThreshold = 400
+)
+
 // GinMiddleware creates a Gin middleware for OpenTelemetry tracing.
 func (t *Tracer) GinMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -77,7 +82,7 @@ func (t *Tracer) recordResponseInfo(span trace.Span, c *gin.Context) {
 		attribute.Int64("http.response.size", int64(c.Writer.Size())),
 	)
 
-	if status >= 400 {
+	if status >= httpErrorThreshold {
 		span.SetStatus(codes.Error, "HTTP "+strconv.Itoa(status))
 	} else {
 		span.SetStatus(codes.Ok, "")
@@ -190,12 +195,12 @@ type HTTPClientInstrumentation struct {
 	tracer *Tracer
 }
 
-// InjectHeaders injects tracing headers into an HTTP request
+// InjectHeaders injects tracing headers into an HTTP request.
 func (h *HTTPClientInstrumentation) InjectHeaders(ctx context.Context, headers map[string]string) {
 	h.tracer.InjectTraceContext(ctx, headers)
 }
 
-// StartClientSpan starts a span for an outgoing HTTP request
+// StartClientSpan starts a span for an outgoing HTTP request.
 func (h *HTTPClientInstrumentation) StartClientSpan(
 	ctx context.Context, method, url string,
 ) (context.Context, trace.Span) {

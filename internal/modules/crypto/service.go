@@ -27,9 +27,11 @@ const (
 	ArgonParallelism = 4
 	ArgonSaltLength  = 16
 	ArgonKeyLength   = 32
+	// ArgonHashParts is the expected number of parts in an Argon2 hash string.
+	ArgonHashParts = 6
 )
 
-// CryptoService defines the interface for cryptographic operations
+// CryptoService defines the interface for cryptographic operations.
 type CryptoService interface {
 	Hash(content string, algorithm string) (string, error)
 	HMAC(content, key, algorithm string) (string, error)
@@ -38,7 +40,7 @@ type CryptoService interface {
 	DecodeCertificate(pemData string) (*CertificateInfo, error)
 }
 
-// CertificateInfo represents decoded certificate information
+// CertificateInfo represents decoded certificate information.
 type CertificateInfo struct {
 	Subject      string    `json:"subject"`
 	Issuer       string    `json:"issuer"`
@@ -50,15 +52,15 @@ type CertificateInfo struct {
 	DNSNames     []string  `json:"dnsNames,omitempty"`
 }
 
-// cryptoService implements the CryptoService interface
+// cryptoService implements the CryptoService interface.
 type cryptoService struct{}
 
-// NewCryptoService creates a new instance of CryptoService
+// NewCryptoService creates a new instance of CryptoService.
 func NewCryptoService() CryptoService {
 	return &cryptoService{}
 }
 
-// Hash calculates hash for the given content using the specified algorithm
+// Hash calculates hash for the given content using the specified algorithm.
 func (s *cryptoService) Hash(content string, algorithm string) (string, error) {
 	switch algorithm {
 	case "md5":
@@ -78,7 +80,7 @@ func (s *cryptoService) Hash(content string, algorithm string) (string, error) {
 	}
 }
 
-// HMAC generates HMAC for the given content and key using the specified algorithm
+// HMAC generates HMAC for the given content and key using the specified algorithm.
 func (s *cryptoService) HMAC(content, key, algorithm string) (string, error) {
 	var hashFunc func() hash.Hash
 
@@ -97,7 +99,7 @@ func (s *cryptoService) HMAC(content, key, algorithm string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// HashPassword hashes a password using Argon2id with secure defaults
+// HashPassword hashes a password using Argon2id with secure defaults.
 func (s *cryptoService) HashPassword(password string) (string, error) {
 	// Generate a random 16-byte salt
 	salt := make([]byte, ArgonSaltLength)
@@ -118,7 +120,7 @@ func (s *cryptoService) HashPassword(password string) (string, error) {
 	return encodedHash, nil
 }
 
-// VerifyPassword verifies a password against its Argon2id hash using constant-time comparison
+// VerifyPassword verifies a password against its Argon2id hash using constant-time comparison.
 func (s *cryptoService) VerifyPassword(password, encodedHash string) bool {
 	// Parse the encoded hash
 	salt, hash, params, err := parseArgon2Hash(encodedHash)
@@ -130,7 +132,8 @@ func (s *cryptoService) VerifyPassword(password, encodedHash string) bool {
 	var actualParams *argon2Params
 	var validHash bool
 
-	if err != nil || params == nil || params.parallelism == 0 || params.memory == 0 || params.iterations == 0 || params.keyLength == 0 {
+	if err != nil || params == nil || params.parallelism == 0 || params.memory == 0 ||
+		params.iterations == 0 || params.keyLength == 0 {
 		// Use dummy values to maintain constant time
 		actualSalt = make([]byte, ArgonSaltLength)
 		actualHash = make([]byte, ArgonKeyLength)
@@ -150,7 +153,8 @@ func (s *cryptoService) VerifyPassword(password, encodedHash string) bool {
 
 	// Generate hash for the provided password using the same parameters
 	otherHash := argon2.IDKey(
-		[]byte(password), actualSalt, actualParams.iterations, actualParams.memory, actualParams.parallelism, actualParams.keyLength,
+		[]byte(password), actualSalt, actualParams.iterations, actualParams.memory,
+		actualParams.parallelism, actualParams.keyLength,
 	)
 
 	// Use constant-time comparison to prevent timing attacks
@@ -163,7 +167,7 @@ func (s *cryptoService) VerifyPassword(password, encodedHash string) bool {
 	return subtle.ConstantTimeSelect(validHashInt, hashMatchesInt, 0) == 1
 }
 
-// boolToByte converts a boolean to a byte for constant-time operations
+// boolToByte converts a boolean to a byte for constant-time operations.
 func boolToByte(b bool) byte {
 	if b {
 		return 1
@@ -171,7 +175,7 @@ func boolToByte(b bool) byte {
 	return 0
 }
 
-// argon2Params holds the parameters for Argon2id
+// argon2Params holds the parameters for Argon2id.
 type argon2Params struct {
 	memory      uint32
 	iterations  uint32
@@ -179,10 +183,10 @@ type argon2Params struct {
 	keyLength   uint32
 }
 
-// parseArgon2Hash parses an Argon2id encoded hash and extracts the salt, hash, and parameters
+// parseArgon2Hash parses an Argon2id encoded hash and extracts the salt, hash, and parameters.
 func parseArgon2Hash(encodedHash string) (salt, hash []byte, params *argon2Params, err error) {
 	parts := strings.Split(encodedHash, "$")
-	if len(parts) != 6 {
+	if len(parts) != ArgonHashParts {
 		return nil, nil, nil, fmt.Errorf("invalid hash format")
 	}
 
@@ -228,7 +232,7 @@ func parseArgon2Hash(encodedHash string) (salt, hash []byte, params *argon2Param
 	return salt, hash, params, nil
 }
 
-// DecodeCertificate decodes a PEM-encoded X.509 certificate and extracts key information
+// DecodeCertificate decodes a PEM-encoded X.509 certificate and extracts key information.
 func (s *cryptoService) DecodeCertificate(pemData string) (*CertificateInfo, error) {
 	// Decode the PEM block
 	block, _ := pem.Decode([]byte(pemData))
@@ -270,7 +274,7 @@ func (s *cryptoService) DecodeCertificate(pemData string) (*CertificateInfo, err
 	return certInfo, nil
 }
 
-// extractKeyUsage converts x509.KeyUsage flags to string descriptions
+// extractKeyUsage converts x509.KeyUsage flags to string descriptions.
 func extractKeyUsage(cert *x509.Certificate) []string {
 	usage := make([]string, 0)
 

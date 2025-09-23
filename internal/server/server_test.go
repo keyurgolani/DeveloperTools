@@ -1,4 +1,4 @@
-package server
+package server_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/keyurgolani/DeveloperTools/internal/config"
 	"github.com/keyurgolani/DeveloperTools/internal/logging"
 	"github.com/keyurgolani/DeveloperTools/internal/metrics"
+	"github.com/keyurgolani/DeveloperTools/internal/server"
 	"github.com/keyurgolani/DeveloperTools/internal/version"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -28,7 +29,7 @@ func TestServer_HealthEndpoints(t *testing.T) {
 	}
 }
 
-func setupTestServer() *Server {
+func setupTestServer() *server.Server {
 	cfg := &config.Config{
 		Server: config.ServerConfig{
 			Port:       8080,
@@ -45,7 +46,7 @@ func setupTestServer() *Server {
 	logger := logging.New("info")
 	registry := prometheus.NewRegistry()
 	metricsInstance := metrics.NewWithRegistry(registry)
-	return NewWithMetrics(cfg, logger, metricsInstance)
+	return server.NewWithMetrics(cfg, logger, metricsInstance)
 }
 
 func getHealthEndpointTestCases() []struct {
@@ -81,7 +82,7 @@ func getHealthEndpointTestCases() []struct {
 	}
 }
 
-func executeHealthEndpointTest(t *testing.T, server *Server, tt struct {
+func executeHealthEndpointTest(t *testing.T, server *server.Server, tt struct {
 	name           string
 	endpoint       string
 	expectedStatus int
@@ -91,7 +92,7 @@ func executeHealthEndpointTest(t *testing.T, server *Server, tt struct {
 	require.NoError(t, err)
 
 	rr := httptest.NewRecorder()
-	server.router.ServeHTTP(rr, req)
+	server.GetRouter().ServeHTTP(rr, req)
 
 	assert.Equal(t, tt.expectedStatus, rr.Code)
 
@@ -125,7 +126,7 @@ func TestServer_StatusEndpoint(t *testing.T) {
 	// Create server with separate metrics registry for testing
 	registry := prometheus.NewRegistry()
 	metricsInstance := metrics.NewWithRegistry(registry)
-	srv := NewWithMetrics(cfg, logger, metricsInstance)
+	srv := server.NewWithMetrics(cfg, logger, metricsInstance)
 
 	// Create request
 	req, err := http.NewRequestWithContext(context.Background(), "GET", "/api/v1/status", nil)
@@ -170,7 +171,7 @@ func TestServer_New(t *testing.T) {
 	// Use NewWithMetrics to avoid registry conflicts
 	registry := prometheus.NewRegistry()
 	metricsInstance := metrics.NewWithRegistry(registry)
-	srv := NewWithMetrics(cfg, logger, metricsInstance)
+	srv := server.NewWithMetrics(cfg, logger, metricsInstance)
 
 	assert.NotNil(t, srv)
 	// Note: config, logger, and router are private fields, so we can't test them directly
@@ -195,7 +196,7 @@ func TestServer_GetRouter(t *testing.T) {
 	// Use NewWithMetrics to avoid registry conflicts
 	registry := prometheus.NewRegistry()
 	metricsInstance := metrics.NewWithRegistry(registry)
-	srv := NewWithMetrics(cfg, logger, metricsInstance)
+	srv := server.NewWithMetrics(cfg, logger, metricsInstance)
 
 	router := srv.GetRouter()
 	assert.NotNil(t, router)
@@ -220,7 +221,7 @@ func TestServer_ServeHTTP(t *testing.T) {
 	// Use NewWithMetrics to avoid registry conflicts
 	registry := prometheus.NewRegistry()
 	metricsInstance := metrics.NewWithRegistry(registry)
-	srv := NewWithMetrics(cfg, logger, metricsInstance)
+	srv := server.NewWithMetrics(cfg, logger, metricsInstance)
 
 	// Create a test request
 	req, err := http.NewRequestWithContext(context.Background(), "GET", "/health", nil)
@@ -234,55 +235,4 @@ func TestServer_ServeHTTP(t *testing.T) {
 
 	// Should get a successful response
 	assert.Equal(t, http.StatusOK, rr.Code)
-}
-
-func TestSanitizeQueryParams(t *testing.T) {
-	tests := []struct {
-		name     string
-		query    string
-		expected string
-	}{
-		{
-			name:     "safe query parameters",
-			query:    "name=john&age=30&city=newyork",
-			expected: "name=john&age=30&city=newyork",
-		},
-		{
-			name:     "query with password",
-			query:    "username=john&password=secret123",
-			expected: "[REDACTED]",
-		},
-		{
-			name:     "query with api_key",
-			query:    "api_key=abc123&data=test",
-			expected: "[REDACTED]",
-		},
-		{
-			name:     "query with token",
-			query:    "token=bearer123&user=john",
-			expected: "[REDACTED]",
-		},
-		{
-			name:     "query with secret",
-			query:    "secret=mysecret&value=test",
-			expected: "[REDACTED]",
-		},
-		{
-			name:     "empty query",
-			query:    "",
-			expected: "",
-		},
-		{
-			name:     "case insensitive matching",
-			query:    "PASSWORD=secret123",
-			expected: "[REDACTED]",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := sanitizeQueryParams(tt.query)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
 }

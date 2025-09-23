@@ -116,7 +116,12 @@ func TestHandler_Hash_ValidationErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/crypto/hash", bytes.NewBufferString(tt.requestBody))
+			req, err := http.NewRequestWithContext(
+				context.Background(),
+				"POST",
+				"/api/v1/crypto/hash",
+				bytes.NewBufferString(tt.requestBody),
+			)
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
 
@@ -164,7 +169,8 @@ func TestHandler_HMAC(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			expectSuccess:  true,
-			expectedHMAC:   "87aa7cdea5ef619d4ff0b4241a1d6cb02379f4e2ce4ec2787ad0b30545e17cdedaa833b7d6b8a702038b274eaea3f4e4be9d914eeb61f1702e696c203a126854",
+			expectedHMAC: "87aa7cdea5ef619d4ff0b4241a1d6cb02379f4e2ce4ec2787ad0b30545e17cded" +
+				"aa833b7d6b8a702038b274eaea3f4e4be9d914eeb61f1702e696c203a126854",
 		},
 		{
 			name: "Invalid algorithm",
@@ -216,7 +222,12 @@ func TestHandler_HMAC_ValidationErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/crypto/hmac", bytes.NewBufferString(tt.requestBody))
+			req, err := http.NewRequestWithContext(
+				context.Background(),
+				"POST",
+				"/api/v1/crypto/hmac",
+				bytes.NewBufferString(tt.requestBody),
+			)
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
 
@@ -301,7 +312,8 @@ func executePasswordHashTest(t *testing.T, router *gin.Engine, tt struct {
 	jsonBody, err := json.Marshal(tt.request)
 	require.NoError(t, err)
 
-	req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/crypto/password/hash", bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequestWithContext(
+		context.Background(), "POST", "/api/v1/crypto/password/hash", bytes.NewBuffer(jsonBody))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -348,7 +360,8 @@ func generateValidHashForTesting(t *testing.T, router *gin.Engine) string {
 	jsonBody, err := json.Marshal(hashRequest)
 	require.NoError(t, err)
 
-	req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/crypto/password/hash", bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequestWithContext(
+		context.Background(), "POST", "/api/v1/crypto/password/hash", bytes.NewBuffer(jsonBody))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -432,7 +445,8 @@ func executePasswordVerifyTest(t *testing.T, router *gin.Engine, tt struct {
 	jsonBody, err := json.Marshal(tt.request)
 	require.NoError(t, err)
 
-	req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/crypto/password/verify", bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequestWithContext(
+		context.Background(), "POST", "/api/v1/crypto/password/verify", bytes.NewBuffer(jsonBody))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -481,7 +495,8 @@ func TestHandler_Password_ValidationErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req, err := http.NewRequestWithContext(context.Background(), "POST", tt.endpoint, bytes.NewBufferString(tt.requestBody))
+			req, err := http.NewRequestWithContext(
+				context.Background(), "POST", tt.endpoint, bytes.NewBufferString(tt.requestBody))
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
 
@@ -658,7 +673,8 @@ func executeDecodeCertificateTest(t *testing.T, router *gin.Engine, tt struct {
 	jsonBody, err := json.Marshal(tt.request)
 	require.NoError(t, err)
 
-	req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/crypto/cert/decode", bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequestWithContext(
+		context.Background(), "POST", "/api/v1/crypto/cert/decode", bytes.NewBuffer(jsonBody))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -669,7 +685,10 @@ func executeDecodeCertificateTest(t *testing.T, router *gin.Engine, tt struct {
 	verifyDecodeCertificateResponse(t, w, tt.expectSuccess, tt.checkResponse)
 }
 
-func verifyDecodeCertificateResponse(t *testing.T, w *httptest.ResponseRecorder, expectSuccess bool, checkResponse func(*testing.T, map[string]interface{})) {
+func verifyDecodeCertificateResponse(
+	t *testing.T, w *httptest.ResponseRecorder, expectSuccess bool,
+	checkResponse func(*testing.T, map[string]interface{}),
+) {
 	var response map[string]interface{}
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
@@ -703,7 +722,8 @@ func TestHandler_DecodeCertificate_ValidationErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/crypto/cert/decode", bytes.NewBufferString(tt.requestBody))
+			req, err := http.NewRequestWithContext(
+				context.Background(), "POST", "/api/v1/crypto/cert/decode", bytes.NewBufferString(tt.requestBody))
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
 
@@ -721,20 +741,27 @@ func TestHandler_DecodeCertificate_ValidationErrors(t *testing.T) {
 	}
 }
 
-// Helper function to execute hash test cases.
-func executeHashTests(t *testing.T, router *gin.Engine, tests []struct {
+// Generic helper function to execute crypto test cases.
+func executeCryptoTests(t *testing.T, router *gin.Engine, endpoint string, tests []struct {
 	name           string
-	request        crypto.HashRequest
+	request        interface{}
 	expectedStatus int
 	expectSuccess  bool
-	expectedHash   string
+	expectedValue  string
+	valueKey       string
+	algorithm      string
 }) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			jsonBody, err := json.Marshal(tt.request)
 			require.NoError(t, err)
 
-			req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/crypto/hash", bytes.NewBuffer(jsonBody))
+			req, err := http.NewRequestWithContext(
+				context.Background(),
+				"POST",
+				endpoint,
+				bytes.NewBuffer(jsonBody),
+			)
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
 
@@ -750,13 +777,54 @@ func executeHashTests(t *testing.T, router *gin.Engine, tests []struct {
 			if tt.expectSuccess {
 				assert.True(t, response["success"].(bool))
 				data := response["data"].(map[string]interface{})
-				assert.Equal(t, tt.expectedHash, data["hash"])
-				assert.Equal(t, tt.request.Algorithm, data["algorithm"])
+				assert.Equal(t, tt.expectedValue, data[tt.valueKey])
+				assert.Equal(t, tt.algorithm, data["algorithm"])
 			} else {
 				assert.Contains(t, response, "error")
 			}
 		})
 	}
+}
+
+// Helper function to execute hash test cases.
+func executeHashTests(t *testing.T, router *gin.Engine, tests []struct {
+	name           string
+	request        crypto.HashRequest
+	expectedStatus int
+	expectSuccess  bool
+	expectedHash   string
+}) {
+	var genericTests []struct {
+		name           string
+		request        interface{}
+		expectedStatus int
+		expectSuccess  bool
+		expectedValue  string
+		valueKey       string
+		algorithm      string
+	}
+
+	for _, test := range tests {
+		genericTests = append(genericTests, struct {
+			name           string
+			request        interface{}
+			expectedStatus int
+			expectSuccess  bool
+			expectedValue  string
+			valueKey       string
+			algorithm      string
+		}{
+			name:           test.name,
+			request:        test.request,
+			expectedStatus: test.expectedStatus,
+			expectSuccess:  test.expectSuccess,
+			expectedValue:  test.expectedHash,
+			valueKey:       "hash",
+			algorithm:      test.request.Algorithm,
+		})
+	}
+
+	executeCryptoTests(t, router, "/api/v1/crypto/hash", genericTests)
 }
 
 // Helper function to execute HMAC test cases.
@@ -767,32 +835,35 @@ func executeHMACTests(t *testing.T, router *gin.Engine, tests []struct {
 	expectSuccess  bool
 	expectedHMAC   string
 }) {
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			jsonBody, err := json.Marshal(tt.request)
-			require.NoError(t, err)
+	var genericTests []struct {
+		name           string
+		request        interface{}
+		expectedStatus int
+		expectSuccess  bool
+		expectedValue  string
+		valueKey       string
+		algorithm      string
+	}
 
-			req, err := http.NewRequestWithContext(context.Background(), "POST", "/api/v1/crypto/hmac", bytes.NewBuffer(jsonBody))
-			require.NoError(t, err)
-			req.Header.Set("Content-Type", "application/json")
-
-			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-
-			var response map[string]interface{}
-			err = json.Unmarshal(w.Body.Bytes(), &response)
-			require.NoError(t, err)
-
-			if tt.expectSuccess {
-				assert.True(t, response["success"].(bool))
-				data := response["data"].(map[string]interface{})
-				assert.Equal(t, tt.expectedHMAC, data["hmac"])
-				assert.Equal(t, tt.request.Algorithm, data["algorithm"])
-			} else {
-				assert.Contains(t, response, "error")
-			}
+	for _, test := range tests {
+		genericTests = append(genericTests, struct {
+			name           string
+			request        interface{}
+			expectedStatus int
+			expectSuccess  bool
+			expectedValue  string
+			valueKey       string
+			algorithm      string
+		}{
+			name:           test.name,
+			request:        test.request,
+			expectedStatus: test.expectedStatus,
+			expectSuccess:  test.expectSuccess,
+			expectedValue:  test.expectedHMAC,
+			valueKey:       "hmac",
+			algorithm:      test.request.Algorithm,
 		})
 	}
+
+	executeCryptoTests(t, router, "/api/v1/crypto/hmac", genericTests)
 }

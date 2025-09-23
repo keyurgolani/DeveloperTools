@@ -56,14 +56,14 @@ func (l *Logger) WithRequestID(requestID string) *Logger {
 	}
 }
 
-// WithModule creates a logger with module context
+// WithModule creates a logger with module context.
 func (l *Logger) WithModule(module string) *Logger {
 	return &Logger{
 		Logger: l.With("module", module),
 	}
 }
 
-// WithContext creates a logger with context values
+// WithContext creates a logger with context values.
 func (l *Logger) WithContext(ctx context.Context) *Logger {
 	// Extract request ID from context if available
 	if requestID := ctx.Value("request_id"); requestID != nil {
@@ -72,7 +72,7 @@ func (l *Logger) WithContext(ctx context.Context) *Logger {
 	return l
 }
 
-// LogError logs an error with additional context
+// LogError logs an error with additional context.
 func (l *Logger) LogError(err error, msg string, args ...any) {
 	if err != nil {
 		args = append(args, "error", err.Error())
@@ -80,7 +80,7 @@ func (l *Logger) LogError(err error, msg string, args ...any) {
 	l.Error(msg, args...)
 }
 
-// LogRequest logs HTTP request information (without sensitive data)
+// LogRequest logs HTTP request information (without sensitive data).
 func (l *Logger) LogRequest(method, path string, status int, duration int64, args ...any) {
 	baseArgs := []any{
 		"method", method,
@@ -101,7 +101,7 @@ func (l *Logger) LogRequest(method, path string, status int, duration int64, arg
 	}
 }
 
-// isSensitiveKey checks if a log key contains sensitive information
+// isSensitiveKey checks if a log key contains sensitive information.
 func isSensitiveKey(key string) bool {
 	sensitiveKeys := []string{
 		"password", "secret", "key", "token", "auth", "api_key",
@@ -119,7 +119,7 @@ func isSensitiveKey(key string) bool {
 	return false
 }
 
-// SanitizeValue sanitizes potentially sensitive values for logging
+// SanitizeValue sanitizes potentially sensitive values for logging.
 func SanitizeValue(key string, value interface{}) interface{} {
 	if isSensitiveKey(key) {
 		return "[REDACTED]"
@@ -135,7 +135,7 @@ func SanitizeValue(key string, value interface{}) interface{} {
 	return value
 }
 
-// looksLikeSensitiveData checks if a string looks like sensitive data
+// looksLikeSensitiveData checks if a string looks like sensitive data.
 func looksLikeSensitiveData(value string) bool {
 	// Check for common patterns of sensitive data
 	if len(value) == 0 {
@@ -160,7 +160,7 @@ func looksLikeSensitiveData(value string) bool {
 	return false
 }
 
-// isAlphanumeric checks if string contains only alphanumeric characters
+// isAlphanumeric checks if string contains only alphanumeric characters.
 func isAlphanumeric(s string) bool {
 	for _, r := range s {
 		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') {
@@ -170,7 +170,7 @@ func isAlphanumeric(s string) bool {
 	return true
 }
 
-// isBase64Like checks if string looks like base64 encoding
+// isBase64Like checks if string looks like base64 encoding.
 func isBase64Like(s string) bool {
 	if len(s) == 0 {
 		return false

@@ -1,4 +1,4 @@
-package tracing
+package tracing_test
 
 import (
 	"context"
@@ -7,19 +7,20 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/keyurgolani/DeveloperTools/internal/tracing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
 )
 
 func TestGinMiddleware(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() { _ = tracer.Shutdown(context.Background()) }()
 
@@ -29,7 +30,7 @@ func TestGinMiddleware(t *testing.T) {
 
 	router.GET("/test", func(c *gin.Context) {
 		// Verify trace context is available
-		traceID, spanID := GetTraceFromGinContext(c)
+		traceID, spanID := tracing.GetTraceFromGinContext(c)
 		assert.NotEmpty(t, traceID)
 		assert.NotEmpty(t, spanID)
 
@@ -46,11 +47,11 @@ func TestGinMiddleware(t *testing.T) {
 }
 
 func TestGinMiddlewareDisabled(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled: false,
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 
 	gin.SetMode(gin.TestMode)
@@ -71,13 +72,13 @@ func TestGinMiddlewareDisabled(t *testing.T) {
 }
 
 func TestGinMiddlewareWithError(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() { _ = tracer.Shutdown(context.Background()) }()
 
@@ -100,13 +101,13 @@ func TestGinMiddlewareWithError(t *testing.T) {
 }
 
 func TestGinMiddlewareWithTraceHeaders(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() { _ = tracer.Shutdown(context.Background()) }()
 
@@ -131,13 +132,13 @@ func TestGinMiddlewareWithTraceHeaders(t *testing.T) {
 }
 
 func TestTracingContextMiddleware(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() { _ = tracer.Shutdown(context.Background()) }()
 
@@ -146,7 +147,7 @@ func TestTracingContextMiddleware(t *testing.T) {
 	router.Use(tracer.TracingContextMiddleware())
 
 	router.GET("/test", func(c *gin.Context) {
-		extractedTracer := GetTracerFromGinContext(c)
+		extractedTracer := tracing.GetTracerFromGinContext(c)
 		assert.NotNil(t, extractedTracer)
 		assert.Equal(t, tracer, extractedTracer)
 
@@ -163,13 +164,13 @@ func TestTracingContextMiddleware(t *testing.T) {
 }
 
 func TestTraceGinHandler(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() { _ = tracer.Shutdown(context.Background()) }()
 
@@ -197,11 +198,11 @@ func TestTraceGinHandler(t *testing.T) {
 }
 
 func TestTraceGinHandlerDisabled(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled: false,
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 
 	gin.SetMode(gin.TestMode)
@@ -223,13 +224,13 @@ func TestTraceGinHandlerDisabled(t *testing.T) {
 }
 
 func TestHTTPClientInstrumentation(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() { _ = tracer.Shutdown(context.Background()) }()
 
@@ -252,7 +253,7 @@ func TestGetTraceFromGinContextEmpty(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-	traceID, spanID := GetTraceFromGinContext(c)
+	traceID, spanID := tracing.GetTraceFromGinContext(c)
 	assert.Empty(t, traceID)
 	assert.Empty(t, spanID)
 }
@@ -261,18 +262,18 @@ func TestGetTracerFromGinContextEmpty(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 
-	tracer := GetTracerFromGinContext(c)
+	tracer := tracing.GetTracerFromGinContext(c)
 	assert.Nil(t, tracer)
 }
 
 func TestStartSpanFromGinContext(t *testing.T) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(t, err)
 	defer func() { _ = tracer.Shutdown(context.Background()) }()
 
@@ -307,13 +308,13 @@ func TestStartSpanFromGinContext(t *testing.T) {
 
 // Benchmark tests.
 func BenchmarkGinMiddleware(b *testing.B) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled:     true,
 		ServiceName: "test-service",
 		Exporter:    "noop",
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(b, err)
 	defer func() { _ = tracer.Shutdown(context.Background()) }()
 
@@ -335,11 +336,11 @@ func BenchmarkGinMiddleware(b *testing.B) {
 }
 
 func BenchmarkGinMiddlewareDisabled(b *testing.B) {
-	config := &Config{
+	config := &tracing.Config{
 		Enabled: false,
 	}
 
-	tracer, err := New(config)
+	tracer, err := tracing.New(config)
 	require.NoError(b, err)
 
 	gin.SetMode(gin.TestMode)
