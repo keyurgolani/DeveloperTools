@@ -87,7 +87,8 @@ func executeHealthEndpointTest(t *testing.T, server *server.Server, tt struct {
 	endpoint       string
 	expectedStatus int
 	expectedFields []string
-}) {
+},
+) {
 	req, err := http.NewRequestWithContext(context.Background(), "GET", tt.endpoint, nil)
 	require.NoError(t, err)
 

@@ -27,10 +27,11 @@ COPY . .
 ARG VERSION
 ARG BUILD_DATE
 ARG GIT_COMMIT
+ARG TARGETARCH
 RUN VERSION=${VERSION:-$(cat VERSION 2>/dev/null || echo "dev")} && \
     BUILD_DATE=${BUILD_DATE:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")} && \
     GIT_COMMIT=${GIT_COMMIT:-$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")} && \
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build \
     -a -installsuffix cgo \
     -ldflags="-w -s -extldflags '-static' -X 'github.com/keyurgolani/DeveloperTools/internal/version.Version=${VERSION}' -X 'github.com/keyurgolani/DeveloperTools/internal/version.BuildDate=${BUILD_DATE}' -X 'github.com/keyurgolani/DeveloperTools/internal/version.GitCommit=${GIT_COMMIT}'" \
     -o server ./cmd/server

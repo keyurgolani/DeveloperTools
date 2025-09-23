@@ -172,7 +172,8 @@ func executeUUIDGenerationTest(t *testing.T, router *gin.Engine, tt struct {
 	expectedStatus int
 	expectSuccess  bool
 	expectError    string
-}) {
+},
+) {
 	body := prepareRequestBody(t, tt.requestBody)
 	req := createUUIDRequest(t, body)
 	w := httptest.NewRecorder()
@@ -206,7 +207,8 @@ func verifyUUIDResponse(t *testing.T, w *httptest.ResponseRecorder, tt struct {
 	expectedStatus int
 	expectSuccess  bool
 	expectError    string
-}) {
+},
+) {
 	var response map[string]interface{}
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
@@ -378,7 +380,8 @@ func executeNanoIDTest(t *testing.T, router *gin.Engine, tt struct {
 	expectedStatus int
 	expectSuccess  bool
 	expectError    string
-}) {
+},
+) {
 	var body bytes.Buffer
 	if str, ok := tt.requestBody.(string); ok {
 		body.WriteString(str)

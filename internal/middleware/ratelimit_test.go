@@ -84,7 +84,8 @@ func createTestRateLimit() middleware.RateLimit {
 }
 
 func testAllowRequestsWithinLimit(
-	t *testing.T, store middleware.RateLimitStore, ctx context.Context, limit middleware.RateLimit) {
+	t *testing.T, store middleware.RateLimitStore, ctx context.Context, limit middleware.RateLimit,
+) {
 	t.Run("Allow requests within limit", func(t *testing.T) {
 		key := "test-key-1"
 
@@ -103,7 +104,8 @@ func testAllowRequestsWithinLimit(
 }
 
 func testDifferentKeysHaveSeparateLimits(
-	t *testing.T, store middleware.RateLimitStore, ctx context.Context, limit middleware.RateLimit) {
+	t *testing.T, store middleware.RateLimitStore, ctx context.Context, limit middleware.RateLimit,
+) {
 	t.Run("Different keys have separate limits", func(t *testing.T) {
 		key1 := "test-key-2"
 		key2 := "test-key-3"
@@ -128,7 +130,8 @@ func testDifferentKeysHaveSeparateLimits(
 }
 
 func testResetFunctionality(
-	t *testing.T, store middleware.RateLimitStore, ctx context.Context, limit middleware.RateLimit) {
+	t *testing.T, store middleware.RateLimitStore, ctx context.Context, limit middleware.RateLimit,
+) {
 	t.Run("Reset functionality", func(t *testing.T) {
 		key := "test-key-4"
 

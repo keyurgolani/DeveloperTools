@@ -273,7 +273,8 @@ func executeHashTest(t *testing.T, service crypto.CryptoService, tt struct {
 	algorithm string
 	expected  string
 	wantErr   bool
-}) {
+},
+) {
 	result, err := service.Hash(tt.content, tt.algorithm)
 
 	if tt.wantErr {
@@ -543,7 +544,8 @@ func executeHMACTest(t *testing.T, service crypto.CryptoService, tt struct {
 	algorithm string
 	expected  string
 	wantErr   bool
-}) {
+},
+) {
 	result, err := service.HMAC(tt.content, tt.key, tt.algorithm)
 
 	if tt.wantErr {

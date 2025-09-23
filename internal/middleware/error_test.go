@@ -71,7 +71,8 @@ func executeErrorHandlerTest(t *testing.T, logger *logging.Logger, tt struct {
 	handler        gin.HandlerFunc
 	expectedStatus int
 	expectedError  string
-}) {
+},
+) {
 	w := httptest.NewRecorder()
 	router := setupErrorHandlerRouter(logger, tt.handler)
 
@@ -165,7 +166,8 @@ func executeErrorResponseTest(t *testing.T, tt struct {
 	handler        gin.HandlerFunc
 	expectedStatus int
 	expectedError  string
-}) {
+},
+) {
 	w := httptest.NewRecorder()
 	c, router := gin.CreateTestContext(w)
 

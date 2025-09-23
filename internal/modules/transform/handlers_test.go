@@ -231,7 +231,8 @@ func executeJWTDecodeTest(t *testing.T, router *gin.Engine, tt struct {
 	request        JWTDecodeRequest
 	expectedStatus int
 	expectError    bool
-}) {
+},
+) {
 	body, _ := json.Marshal(tt.request)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/transform/jwt/decode", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -325,7 +326,8 @@ func executeCompressionTests(t *testing.T, router *gin.Engine, tests []struct {
 	request        CompressionRequest
 	expectedStatus int
 	expectError    bool
-}) {
+},
+) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			body, _ := json.Marshal(tt.request)
@@ -389,7 +391,8 @@ func executeTransformTests(t *testing.T, router *gin.Engine, endpoint string, te
 	expectedStatus int
 	expectedResult string
 	expectError    bool
-}) {
+},
+) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			body, _ := json.Marshal(tt.request)
@@ -424,7 +427,8 @@ func executeBase64Tests(t *testing.T, router *gin.Engine, tests []struct {
 	expectedStatus int
 	expectedResult string
 	expectError    bool
-}) {
+},
+) {
 	var genericTests []struct {
 		name           string
 		request        interface{}
@@ -459,7 +463,8 @@ func executeURLTests(t *testing.T, router *gin.Engine, tests []struct {
 	expectedStatus int
 	expectedResult string
 	expectError    bool
-}) {
+},
+) {
 	var genericTests []struct {
 		name           string
 		request        interface{}

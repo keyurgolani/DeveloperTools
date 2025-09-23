@@ -307,7 +307,7 @@ func TestLoadFromFile(t *testing.T) {
 	data, err := json.Marshal(configData)
 	require.NoError(t, err)
 
-	err = os.WriteFile(configFile, data, 0600)
+	err = os.WriteFile(configFile, data, 0o600)
 	require.NoError(t, err)
 
 	// Load configuration from file
@@ -341,7 +341,7 @@ func TestLoadFromFileWithEnvironmentOverride(t *testing.T) {
 	data, err := json.Marshal(configData)
 	require.NoError(t, err)
 
-	err = os.WriteFile(configFile, data, 0600)
+	err = os.WriteFile(configFile, data, 0o600)
 	require.NoError(t, err)
 
 	// Set environment variable to override file config
@@ -366,17 +366,17 @@ func TestLoadSecrets(t *testing.T) {
 	// Create temporary secrets directory
 	tempDir := t.TempDir()
 	secretsDir := filepath.Join(tempDir, "secrets")
-	err := os.MkdirAll(secretsDir, 0750)
+	err := os.MkdirAll(secretsDir, 0o750)
 	require.NoError(t, err)
 
 	// Create secret files
-	err = os.WriteFile(filepath.Join(secretsDir, "jwt-secret"), []byte("mounted-jwt-secret"), 0600)
+	err = os.WriteFile(filepath.Join(secretsDir, "jwt-secret"), []byte("mounted-jwt-secret"), 0o600)
 	require.NoError(t, err)
 
-	err = os.WriteFile(filepath.Join(secretsDir, "api-keys"), []byte("key1,key2,key3"), 0600)
+	err = os.WriteFile(filepath.Join(secretsDir, "api-keys"), []byte("key1,key2,key3"), 0o600)
 	require.NoError(t, err)
 
-	err = os.WriteFile(filepath.Join(secretsDir, "redis-url"), []byte("redis://secret-redis:6379"), 0600)
+	err = os.WriteFile(filepath.Join(secretsDir, "redis-url"), []byte("redis://secret-redis:6379"), 0o600)
 	require.NoError(t, err)
 
 	// Set secrets mount path
@@ -400,11 +400,11 @@ func TestLoadSecretsWithEnvironmentPrecedence(t *testing.T) {
 	// Create temporary secrets directory
 	tempDir := t.TempDir()
 	secretsDir := filepath.Join(tempDir, "secrets")
-	err := os.MkdirAll(secretsDir, 0750)
+	err := os.MkdirAll(secretsDir, 0o750)
 	require.NoError(t, err)
 
 	// Create secret file
-	err = os.WriteFile(filepath.Join(secretsDir, "jwt-secret"), []byte("mounted-jwt-secret"), 0600)
+	err = os.WriteFile(filepath.Join(secretsDir, "jwt-secret"), []byte("mounted-jwt-secret"), 0o600)
 	require.NoError(t, err)
 
 	// Set environment variables (should take precedence over secrets)
@@ -436,7 +436,7 @@ func TestLoadInvalidConfigFile(t *testing.T) {
 	tempDir := t.TempDir()
 	configFile := filepath.Join(tempDir, "config.json")
 
-	err := os.WriteFile(configFile, []byte("invalid json"), 0600)
+	err := os.WriteFile(configFile, []byte("invalid json"), 0o600)
 	require.NoError(t, err)
 
 	_, err = config.Load(config.LoadOptions{ConfigFile: configFile})

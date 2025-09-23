@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   dev-utilities:
     build:
-      context: .
+      context: ..
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
@@ -13,7 +11,7 @@ services:
       - RATE_LIMIT_STORE=memory
       - GIN_MODE=release
     healthcheck:
-      test: ["/server", "--health-check"]
+      test: ["CMD", "/server", "--health-check"]
       interval: 30s
       timeout: 3s
       retries: 3
@@ -49,7 +47,7 @@ services:
   # Example with Redis rate limiting
   dev-utilities-with-redis:
     build:
-      context: .
+      context: ..
       dockerfile: Dockerfile
     ports:
       - "8081:8080"
@@ -64,7 +62,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["/server", "--health-check"]
+      test: ["CMD", "/server", "--health-check"]
       interval: 30s
       timeout: 3s
       retries: 3

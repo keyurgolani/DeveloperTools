@@ -76,7 +76,8 @@ func executeUUIDServiceTest(t *testing.T, service id.IDService, tt struct {
 	count       int
 	expectError bool
 	errorMsg    string
-}) {
+},
+) {
 	uuids, err := service.GenerateUUID(tt.version, tt.count)
 
 	if tt.expectError {
@@ -200,7 +201,8 @@ func executeNanoIDServiceTest(t *testing.T, service id.IDService, tt struct {
 	count       int
 	expectError bool
 	errorMsg    string
-}) {
+},
+) {
 	ids, err := service.GenerateNanoID(tt.size, tt.count)
 
 	if tt.expectError {

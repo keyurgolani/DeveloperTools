@@ -104,13 +104,34 @@ fi
 # Check 3: Go modules
 print_status "Validating Go modules..."
 TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
-if go mod verify && go mod tidy -diff; then
-    print_success "Go modules are valid and tidy"
-    PASSED_CHECKS=$((PASSED_CHECKS + 1))
-else
-    print_error "Go modules validation failed. Run 'go mod tidy' to fix"
+
+# Verify modules first
+if ! go mod verify; then
+    print_error "Go modules verification failed"
     FAILED_CHECKS=$((FAILED_CHECKS + 1))
     FAILED_CHECK_NAMES+=("Go modules")
+else
+    # Check if modules are tidy by comparing before/after
+    # Save checksums of go.mod and go.sum
+    GO_MOD_BEFORE=$(md5sum go.mod 2>/dev/null || md5 go.mod 2>/dev/null || shasum go.mod)
+    GO_SUM_BEFORE=$(md5sum go.sum 2>/dev/null || md5 go.sum 2>/dev/null || shasum go.sum)
+    
+    # Run go mod tidy
+    go mod tidy >/dev/null 2>&1
+    
+    # Check if files changed
+    GO_MOD_AFTER=$(md5sum go.mod 2>/dev/null || md5 go.mod 2>/dev/null || shasum go.mod)
+    GO_SUM_AFTER=$(md5sum go.sum 2>/dev/null || md5 go.sum 2>/dev/null || shasum go.sum)
+    
+    if [ "$GO_MOD_BEFORE" != "$GO_MOD_AFTER" ] || [ "$GO_SUM_BEFORE" != "$GO_SUM_AFTER" ]; then
+        print_error "Go modules are not tidy. Files were modified by 'go mod tidy'"
+        print_error "Please run 'go mod tidy' locally and commit the changes"
+        FAILED_CHECKS=$((FAILED_CHECKS + 1))
+        FAILED_CHECK_NAMES+=("Go modules")
+    else
+        print_success "Go modules are valid and tidy"
+        PASSED_CHECKS=$((PASSED_CHECKS + 1))
+    fi
 fi
 
 # Check 4: Build validation
@@ -176,10 +197,10 @@ fi
 # Check 8: Test coverage
 print_status "Checking test coverage..."
 TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
-COVERAGE_THRESHOLD=75  # Lower threshold for pre-commit, CI can enforce higher
+COVERAGE_THRESHOLD=78  # Same threshold as Makefile and CI
 if go test -coverprofile=coverage.out -covermode=atomic ./internal/... ./pkg/... >/dev/null 2>&1; then
     COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
-    if (( $(echo "$COVERAGE >= $COVERAGE_THRESHOLD" | bc -l) )); then
+    if awk "BEGIN {exit !($COVERAGE >= $COVERAGE_THRESHOLD)}"; then
         print_success "Test coverage: ${COVERAGE}% (>= ${COVERAGE_THRESHOLD}%)"
         PASSED_CHECKS=$((PASSED_CHECKS + 1))
     else

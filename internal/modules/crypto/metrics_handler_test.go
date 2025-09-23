@@ -22,7 +22,8 @@ func executeMetricsTests(t *testing.T, router *gin.Engine, endpoint string, test
 	request        interface{}
 	expectedStatus int
 	expectSuccess  bool
-}) {
+},
+) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			reqBody, err := json.Marshal(tt.request)

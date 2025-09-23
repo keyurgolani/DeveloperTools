@@ -37,9 +37,12 @@ type E2ETestSuite struct {
 
 // SetupSuite runs once before all tests
 func (suite *E2ETestSuite) SetupSuite() {
-	// Skip E2E tests if Docker is not available or if running in CI without Docker
-	if !suite.isDockerAvailable() {
-		suite.T().Skip("Docker not available, skipping E2E tests")
+	// Check if we should run in local mode (fallback when Docker is not available)
+	testMode := os.Getenv("E2E_TEST_MODE")
+	if testMode == "local" || !suite.isDockerAvailable() {
+		suite.T().Log("Running E2E tests in local mode (without Docker)")
+		suite.setupLocalMode()
+		return
 	}
 
 	// Set image name for cleanup tracking
@@ -93,6 +96,13 @@ func (suite *E2ETestSuite) TearDownTest() {
 
 // TearDownSuite runs once after all tests
 func (suite *E2ETestSuite) TearDownSuite() {
+	// Check if we're running in local mode
+	if strings.HasPrefix(suite.containerID, "local-pid-") {
+		suite.T().Log("Cleaning up local server...")
+		suite.cleanupLocalServer()
+		return
+	}
+
 	suite.T().Log("Starting comprehensive cleanup of Docker artifacts...")
 
 	// Perform comprehensive cleanup
@@ -118,11 +128,126 @@ func (suite *E2ETestSuite) TearDownSuite() {
 	}
 }
 
+// cleanupLocalServer cleans up the local server process
+func (suite *E2ETestSuite) cleanupLocalServer() {
+	if suite.containerID == "" {
+		return
+	}
+
+	// Extract PID from containerID
+	pidStr := strings.TrimPrefix(suite.containerID, "local-pid-")
+	if pidStr == suite.containerID {
+		suite.T().Log("Invalid local PID format")
+		return
+	}
+
+	// Try to find and kill the process
+	cmd := exec.Command("pkill", "-f", "bin/server")
+	cmd.Dir = ".."
+	if err := cmd.Run(); err != nil {
+		suite.T().Logf("Warning: Failed to kill local server process: %v", err)
+	} else {
+		suite.T().Log("✅ Local server process cleaned up successfully")
+	}
+
+	// Clean up the binary
+	if err := os.Remove("../bin/server"); err != nil && !os.IsNotExist(err) {
+		suite.T().Logf("Warning: Failed to remove server binary: %v", err)
+	}
+}
+
 // isDockerAvailable checks if Docker is available
 func (suite *E2ETestSuite) isDockerAvailable() bool {
 	cmd := exec.Command("docker", "version")
 	err := cmd.Run()
 	return err == nil
+}
+
+// setupLocalMode sets up E2E tests to run against a local binary instead of Docker
+func (suite *E2ETestSuite) setupLocalMode() {
+	// Set up HTTP client
+	suite.httpClient = &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	// Use a fixed port for local testing
+	suite.baseURL = "http://localhost:8080"
+
+	// Check if server is already running
+	resp, err := suite.httpClient.Get(suite.baseURL + "/health")
+	if err == nil && resp.StatusCode == http.StatusOK {
+		resp.Body.Close()
+		suite.T().Log("Server is already running at", suite.baseURL)
+		return
+	}
+	if resp != nil {
+		resp.Body.Close()
+	}
+
+	// Build and start local server
+	suite.T().Log("Building local server binary...")
+	if err := suite.buildLocalBinary(); err != nil {
+		suite.T().Fatalf("Failed to build local binary: %v", err)
+	}
+
+	suite.T().Log("Starting local server...")
+	if err := suite.startLocalServer(); err != nil {
+		suite.T().Fatalf("Failed to start local server: %v", err)
+	}
+
+	// Wait for server to be ready
+	suite.T().Log("Waiting for local server to be ready...")
+	if err := suite.waitForContainer(); err != nil {
+		suite.T().Fatalf("Local server failed to start properly: %v", err)
+	}
+
+	suite.T().Log("E2E test setup complete (local mode)")
+}
+
+// buildLocalBinary builds the server binary for local testing
+func (suite *E2ETestSuite) buildLocalBinary() error {
+	cmd := exec.Command("go", "build", "-o", "bin/server", "./cmd/server")
+	cmd.Dir = ".."
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+// startLocalServer starts the local server binary
+func (suite *E2ETestSuite) startLocalServer() error {
+	cmd := exec.Command("./bin/server")
+	cmd.Dir = ".."
+	cmd.Env = append(os.Environ(),
+		"SERVER_PORT=8080",
+		"LOG_LEVEL=info",
+		"AUTH_METHOD=none",
+		"RATE_LIMIT_ENABLED=false",
+	)
+
+	// Start the server in the background
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start server: %w", err)
+	}
+
+	// Store the process for cleanup
+	suite.containerID = fmt.Sprintf("local-pid-%d", cmd.Process.Pid)
+
+	// Set up cleanup for the local process
+	suite.setupLocalCleanup(cmd.Process)
+
+	return nil
+}
+
+// setupLocalCleanup sets up cleanup for the local server process
+func (suite *E2ETestSuite) setupLocalCleanup(process *os.Process) {
+	// Store the process for cleanup in TearDownSuite
+	go func() {
+		// Wait for the process to finish (in case it exits early)
+		process.Wait()
+	}()
+
+	// Set up signal handler for graceful cleanup
+	suite.setupSignalHandler()
 }
 
 // buildDockerImage builds the Docker image for testing

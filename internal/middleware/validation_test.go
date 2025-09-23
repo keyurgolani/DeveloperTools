@@ -194,7 +194,8 @@ func executeValidateURLTest(t *testing.T, validationMiddleware *middleware.Valid
 	url         string
 	expectError bool
 	errorMsg    string
-}) {
+},
+) {
 	err := validationMiddleware.ValidateURL(tt.url)
 
 	if tt.expectError {
@@ -448,7 +449,8 @@ func executeValidateInputTest(t *testing.T, middleware *middleware.ValidationMid
 	allowEmpty  bool
 	expectError bool
 	errorMsg    string
-}) {
+},
+) {
 	err := middleware.ValidateInput(tt.input, tt.maxLength, tt.allowEmpty)
 
 	if tt.expectError {
@@ -611,7 +613,8 @@ func executeValidateJSONTest(t *testing.T, middleware *middleware.ValidationMidd
 	maxSize     int
 	expectError bool
 	errorMsg    string
-}) {
+},
+) {
 	err := middleware.ValidateJSON(tt.input, tt.maxSize)
 
 	if tt.expectError {

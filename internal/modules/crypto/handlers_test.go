@@ -96,7 +96,6 @@ func TestHandler_Hash_ValidationErrors(t *testing.T) {
 		requestBody string
 		expectedMsg string
 	}{
-
 		{
 			name:        "Missing algorithm field",
 			requestBody: `{"content": "test"}`,
@@ -205,7 +204,6 @@ func TestHandler_HMAC_ValidationErrors(t *testing.T) {
 		name        string
 		requestBody string
 	}{
-
 		{
 			name:        "Missing key field",
 			requestBody: `{"content": "test", "algorithm": "sha256"}`,
@@ -308,7 +306,8 @@ func executePasswordHashTest(t *testing.T, router *gin.Engine, tt struct {
 	request        crypto.PasswordHashRequest
 	expectedStatus int
 	expectSuccess  bool
-}) {
+},
+) {
 	jsonBody, err := json.Marshal(tt.request)
 	require.NoError(t, err)
 
@@ -441,7 +440,8 @@ func executePasswordVerifyTest(t *testing.T, router *gin.Engine, tt struct {
 	expectedStatus int
 	expectSuccess  bool
 	expectedValid  bool
-}) {
+},
+) {
 	jsonBody, err := json.Marshal(tt.request)
 	require.NoError(t, err)
 
@@ -479,7 +479,6 @@ func TestHandler_Password_ValidationErrors(t *testing.T) {
 		endpoint    string
 		requestBody string
 	}{
-
 		{
 			name:        "Hash - invalid JSON",
 			endpoint:    "/api/v1/crypto/password/hash",
@@ -669,7 +668,8 @@ func executeDecodeCertificateTest(t *testing.T, router *gin.Engine, tt struct {
 	expectedStatus int
 	expectSuccess  bool
 	checkResponse  func(*testing.T, map[string]interface{})
-}) {
+},
+) {
 	jsonBody, err := json.Marshal(tt.request)
 	require.NoError(t, err)
 
@@ -750,7 +750,8 @@ func executeCryptoTests(t *testing.T, router *gin.Engine, endpoint string, tests
 	expectedValue  string
 	valueKey       string
 	algorithm      string
-}) {
+},
+) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			jsonBody, err := json.Marshal(tt.request)
@@ -793,7 +794,8 @@ func executeHashTests(t *testing.T, router *gin.Engine, tests []struct {
 	expectedStatus int
 	expectSuccess  bool
 	expectedHash   string
-}) {
+},
+) {
 	var genericTests []struct {
 		name           string
 		request        interface{}
@@ -834,7 +836,8 @@ func executeHMACTests(t *testing.T, router *gin.Engine, tests []struct {
 	expectedStatus int
 	expectSuccess  bool
 	expectedHMAC   string
-}) {
+},
+) {
 	var genericTests []struct {
 		name           string
 		request        interface{}

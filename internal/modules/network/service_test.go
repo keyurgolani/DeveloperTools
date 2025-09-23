@@ -150,7 +150,8 @@ func executeURLParseTest(t *testing.T, service network.NetworkService, tt struct
 	url      string
 	expected *network.URLParts
 	wantErr  bool
-}) {
+},
+) {
 	result, err := service.ParseURL(tt.url)
 
 	if tt.wantErr {
@@ -308,7 +309,8 @@ func executeURLBuildTest(t *testing.T, service network.NetworkService, tt struct
 	parts    *network.URLParts
 	expected string
 	wantErr  bool
-}) {
+},
+) {
 	result, err := service.BuildURL(tt.parts)
 
 	if tt.wantErr {
@@ -511,7 +513,6 @@ func TestNetworkService_DNSLookup(t *testing.T) {
 
 	t.Run("A record lookup", func(t *testing.T) {
 		result, err := service.DNSLookup("google.com", "A")
-
 		if err != nil {
 			t.Logf("DNS lookup failed (possibly due to network): %v", err)
 			return
